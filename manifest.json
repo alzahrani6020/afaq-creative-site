@@ -1,0 +1,19 @@
+{
+  "name": "أفاق إبداعية | Afaq Creative",
+  "short_name": "آفاق",
+  "description": "وكالة إبداعية متكاملة مرخصة في مصر والسعودية",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0E1A",
+  "theme_color": "#0b5aa2",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "/assets/afaq-logo-v4.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

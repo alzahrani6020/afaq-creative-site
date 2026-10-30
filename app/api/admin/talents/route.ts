@@ -5,6 +5,7 @@ type ApplicationStatus = 'new' | 'under_review' | 'qualified' | 'need_informatio
 const ApplicationStatusValues = ['new', 'under_review', 'qualified', 'need_information', 'contacted', 'accepted', 'rejected'] as const;
 import { requireAdmin, UnauthorizedError } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
+import { getCountry, getRegion } from '@/lib/catalog/locations';
 
 const PAGE_SIZE = 20;
 const ALLOWED_SORT = ['createdAt', 'updatedAt', 'status', 'applicationNumber'];
@@ -17,12 +18,22 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, Number(searchParams.get('page') || '1'));
     const search = searchParams.get('search')?.trim() || '';
     const status = searchParams.get('status') as ApplicationStatus | null;
+    const country = searchParams.get('country')?.trim() || '';
+    const region = searchParams.get('region')?.trim() || '';
+    const city = searchParams.get('city')?.trim() || '';
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
 
     const where: any = {};
     if (status && ApplicationStatusValues.includes(status as typeof ApplicationStatusValues[number])) {
       where.status = status;
+    }
+    if (country && getCountry(country)) {
+      where.country = country;
+      if (region && getRegion(country, region)) {
+        where.region = region;
+        if (city) where.city = city;
+      }
     }
     if (search) {
       where.OR = [
@@ -63,6 +74,7 @@ export async function GET(req: NextRequest) {
         total,
         totalPages: Math.ceil(total / PAGE_SIZE),
       },
+      filters: { search, status: status || '', country, region, city },
     });
   } catch (error) {
     if (error instanceof UnauthorizedError) {

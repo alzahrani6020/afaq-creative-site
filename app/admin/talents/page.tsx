@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -11,8 +11,9 @@ import {
   FileDown,
   Eye,
   Filter,
+  MapPin,
 } from 'lucide-react';
-import { getSector, getProfession } from '@/lib/catalog/sectors';
+import { getProfession } from '@/lib/catalog/sectors';
 import { countries } from '@/lib/catalog/locations';
 
 const statusLabels: Record<string, string> = {
@@ -77,19 +78,45 @@ export default function AdminTalentsPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [country, setCountry] = useState('');
+  const [region, setRegion] = useState('');
+  const [city, setCity] = useState('');
   const [page, setPage] = useState(1);
 
-  const fetchTalents = async () => {
+  const selectedCountry = useMemo(
+    () => countries.find((item) => item.value === country),
+    [country]
+  );
+  const selectedRegion = useMemo(
+    () => selectedCountry?.regions.find((item) => item.value === region),
+    [selectedCountry, region]
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const initialStatus = params.get('status');
+    if (initialStatus && statusLabels[initialStatus]) setStatus(initialStatus);
+  }, []);
+
+  const buildParams = (requestedPage = page) => {
+    const params = new URLSearchParams();
+    params.set('page', String(requestedPage));
+    if (search.trim()) params.set('search', search.trim());
+    if (status) params.set('status', status);
+    if (country) params.set('country', country);
+    if (region) params.set('region', region);
+    if (city) params.set('city', city);
+    return params;
+  };
+
+  const fetchTalents = async (requestedPage = page) => {
     setLoading(true);
     setError('');
 
-    const params = new URLSearchParams();
-    params.set('page', String(page));
-    if (search) params.set('search', search);
-    if (status) params.set('status', status);
-
     try {
-      const res = await fetch(`/api/admin/talents?${params.toString()}`);
+      const res = await fetch(`/api/admin/talents?${buildParams(requestedPage).toString()}`, {
+        cache: 'no-store',
+      });
       const json = await res.json();
 
       if (res.status === 401) {
@@ -103,7 +130,7 @@ export default function AdminTalentsPage() {
       } else {
         setError(json.message || 'تعذر تحميل البيانات.');
       }
-    } catch (err) {
+    } catch {
       setError('حدث خطأ أثناء الاتصال بالخادم.');
     } finally {
       setLoading(false);
@@ -111,20 +138,27 @@ export default function AdminTalentsPage() {
   };
 
   useEffect(() => {
-    fetchTalents();
+    fetchTalents(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, status]);
+  }, [page, status, country, region, city]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setPage(1);
-    fetchTalents();
+    if (page !== 1) setPage(1);
+    else fetchTalents(1);
   };
 
   const handleExport = () => {
-    const params = new URLSearchParams();
-    if (status) params.set('status', status);
+    const params = buildParams(1);
+    params.delete('page');
     window.open(`/api/admin/talents/export?${params.toString()}`, '_blank');
+  };
+
+  const resetLocation = (nextCountry: string) => {
+    setCountry(nextCountry);
+    setRegion('');
+    setCity('');
+    setPage(1);
   };
 
   const getPrimaryLabel = (talent: Talent) => {
@@ -138,8 +172,7 @@ export default function AdminTalentsPage() {
 
   const getExtraCount = (talent: Talent) => {
     const profiles = talent.skillProfiles || [];
-    const nonPrimary = profiles.filter((p) => !p.isPrimary).length;
-    return nonPrimary;
+    return profiles.filter((p) => !p.isPrimary).length;
   };
 
   const getCountryLabel = (value?: string) => {
@@ -148,10 +181,10 @@ export default function AdminTalentsPage() {
 
   const getCityLabel = (talent: Talent) => {
     if (!talent.country || !talent.region || !talent.city) return '—';
-    const country = countries.find((c) => c.value === talent.country);
-    const region = country?.regions.find((r) => r.value === talent.region);
-    const city = region?.cities.find((c) => c.value === talent.city);
-    return city?.label || talent.city;
+    const talentCountry = countries.find((c) => c.value === talent.country);
+    const talentRegion = talentCountry?.regions.find((r) => r.value === talent.region);
+    const talentCity = talentRegion?.cities.find((c) => c.value === talent.city);
+    return talentCity?.label || talent.city;
   };
 
   return (
@@ -159,50 +192,94 @@ export default function AdminTalentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">طلبات المواهب</h1>
-          <p className="text-white/50 text-sm mt-1">إدارة ومراجعة طلبات الانضمام لمنظومة المواهب</p>
+          <p className="text-white/50 text-sm mt-1">إدارة ومراجعة طلبات الانضمام لمنظومة المواهب في الدول العربية</p>
         </div>
         <button
           onClick={handleExport}
           className="inline-flex items-center gap-2 bg-afaq-teal/10 hover:bg-afaq-teal/20 text-afaq-teal border border-afaq-teal/20 px-4 py-2 rounded-lg text-sm transition-colors"
         >
           <FileDown className="w-4 h-4" />
-          تصدير CSV
+          تصدير النتائج CSV
         </button>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
-        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="بحث برقم الطلب، الجوال، البريد..."
-              className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pr-10 pl-4 text-white placeholder-white/30 focus:outline-none focus:border-afaq-teal"
-            />
+        <form onSubmit={handleSearch} className="space-y-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="بحث برقم الطلب، الجوال، البريد..."
+                className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pr-10 pl-4 text-white placeholder-white/30 focus:outline-none focus:border-afaq-teal"
+              />
+            </div>
+
+            <div className="relative min-w-[200px]">
+              <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <select
+                value={status}
+                onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+                className="w-full appearance-none bg-white/5 border border-white/10 rounded-lg py-2.5 pr-10 pl-4 text-white focus:outline-none focus:border-afaq-teal"
+              >
+                <option value="" className="bg-afaq-bg">كل الحالات</option>
+                {Object.entries(statusLabels).map(([key, label]) => (
+                  <option key={key} value={key} className="bg-afaq-bg">{label}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              className="bg-afaq-blue hover:bg-afaq-blue2 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              بحث
+            </button>
           </div>
 
-          <div className="relative min-w-[200px]">
-            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-white/10">
+            <label className="relative">
+              <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <select
+                value={country}
+                onChange={(e) => resetLocation(e.target.value)}
+                className="w-full appearance-none bg-white/5 border border-white/10 rounded-lg py-2.5 pr-10 pl-4 text-white focus:outline-none focus:border-afaq-teal"
+              >
+                <option value="" className="bg-afaq-bg">كل الدول العربية</option>
+                {countries.map((item) => (
+                  <option key={item.value} value={item.value} className="bg-afaq-bg">
+                    {item.flag} {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <select
-              value={status}
-              onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-              className="w-full appearance-none bg-white/5 border border-white/10 rounded-lg py-2.5 pr-10 pl-4 text-white focus:outline-none focus:border-afaq-teal"
+              value={region}
+              disabled={!selectedCountry}
+              onChange={(e) => { setRegion(e.target.value); setCity(''); setPage(1); }}
+              className="w-full appearance-none bg-white/5 border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-afaq-teal disabled:opacity-40"
             >
-              <option value="" className="bg-afaq-bg">كل الحالات</option>
-              {Object.entries(statusLabels).map(([key, label]) => (
-                <option key={key} value={key} className="bg-afaq-bg">{label}</option>
+              <option value="" className="bg-afaq-bg">كل المناطق / المحافظات</option>
+              {selectedCountry?.regions.map((item) => (
+                <option key={item.value} value={item.value} className="bg-afaq-bg">{item.label}</option>
+              ))}
+            </select>
+
+            <select
+              value={city}
+              disabled={!selectedRegion}
+              onChange={(e) => { setCity(e.target.value); setPage(1); }}
+              className="w-full appearance-none bg-white/5 border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-afaq-teal disabled:opacity-40"
+            >
+              <option value="" className="bg-afaq-bg">كل المدن</option>
+              {selectedRegion?.cities.map((item) => (
+                <option key={item.value} value={item.value} className="bg-afaq-bg">{item.label}</option>
               ))}
             </select>
           </div>
-
-          <button
-            type="submit"
-            className="bg-afaq-blue hover:bg-afaq-blue2 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          >
-            بحث
-          </button>
         </form>
       </div>
 
@@ -219,7 +296,7 @@ export default function AdminTalentsPage() {
           </div>
         ) : talents.length === 0 ? (
           <div className="text-center py-20 text-white/50">
-            لا توجد طلبات مطابقة للبحث.
+            لا توجد طلبات مطابقة للفلاتر.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -283,27 +360,29 @@ export default function AdminTalentsPage() {
           </div>
         )}
 
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-4 border-t border-white/10">
+        {pagination && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-t border-white/10">
             <p className="text-white/50 text-sm">
-              صفحة {pagination.page} من {pagination.totalPages} ({pagination.total} طلب)
+              صفحة {pagination.page} من {Math.max(1, pagination.totalPages)} ({pagination.total} طلب)
             </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="p-2 rounded-lg border border-white/10 text-white/70 hover:bg-white/5 disabled:opacity-40"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-                disabled={page >= pagination.totalPages}
-                className="p-2 rounded-lg border border-white/10 text-white/70 hover:bg-white/5 disabled:opacity-40"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            </div>
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="p-2 rounded-lg border border-white/10 text-white/70 hover:bg-white/5 disabled:opacity-40"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                  disabled={page >= pagination.totalPages}
+                  className="p-2 rounded-lg border border-white/10 text-white/70 hover:bg-white/5 disabled:opacity-40"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

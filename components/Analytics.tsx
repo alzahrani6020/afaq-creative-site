@@ -1,10 +1,16 @@
-import Script from 'next/script';
+'use client';
 
-// GA4 loads only when NEXT_PUBLIC_GA_ID is set on the deployment. Without the
-// ID nothing is injected — the site stays tracker-free until you add it.
+import Script from 'next/script';
+import { usePathname } from 'next/navigation';
+
+// Public-site analytics only. Admin traffic is intentionally excluded so
+// internal operator activity does not contaminate customer acquisition data.
 export function Analytics() {
+  const pathname = usePathname();
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
-  if (!gaId) return null;
+
+  if (!gaId || pathname?.startsWith('/admin')) return null;
+
   return (
     <>
       <Script

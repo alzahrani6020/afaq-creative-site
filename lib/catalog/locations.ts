@@ -1,4 +1,5 @@
 import { CountryOption } from './types';
+import { extraArabCountries } from './locations-arab-extra';
 
 export const countryDialCodes: Record<string, string> = {
   SA: '966',
@@ -10,9 +11,11 @@ export const countryDialCodes: Record<string, string> = {
   OM: '968',
   JO: '962',
   LB: '961',
+  IQ: '964', SY: '963', PS: '970', YE: '967', MA: '212', DZ: '213', TN: '216', LY: '218', SD: '249',
+  SO: '252', DJ: '253', KM: '269', MR: '222',
 };
 
-export const countries: CountryOption[] = [
+const baseCountries: CountryOption[] = [
   {
     value: 'SA',
     label: 'السعودية',
@@ -266,8 +269,16 @@ export const countries: CountryOption[] = [
   },
 ];
 
+export const countries: CountryOption[] = [...baseCountries, ...extraArabCountries];
+
 export function getCountry(value: string): CountryOption | undefined {
-  return countries.find((c) => c.value === value);
+  const normalized = value.trim().toLowerCase();
+  return countries.find((c) =>
+    c.value.toLowerCase() === normalized ||
+    c.label.toLowerCase() === normalized ||
+    c.labelEn?.toLowerCase() === normalized ||
+    c.aliases?.some((alias) => alias.toLowerCase() === normalized)
+  );
 }
 
 export function getRegion(countryValue: string, regionValue: string) {

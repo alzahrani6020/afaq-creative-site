@@ -1,0 +1,370 @@
+// Centralized alias index for fuzzy catalog search.
+// Each entry maps a common/local spelling to the canonical profession id.
+
+export const professionAliases: Record<string, string> = {
+  // Custom-fallback labels
+  'لم أجد مهنتي': 'CUSTOM',
+  'لم أجد حرفتي': 'CUSTOM',
+  'لم أجد موهبتي': 'CUSTOM',
+  'أخرى': 'CUSTOM',
+  'اخرى': 'CUSTOM',
+  'غير ذلك': 'CUSTOM',
+  'غيره': 'CUSTOM',
+
+  // Manual trades
+  'كهربائي': 'ELECTRICIAN',
+  'فني كهرباء': 'ELECTRICIAN',
+  'عامل كهرباء': 'ELECTRICIAN',
+  'كهربائي منازل': 'ELECTRICIAN',
+  'كهربائي سيارات': 'AUTO_ELECTRICIAN',
+  'فني كهرباء سيارات': 'AUTO_ELECTRICIAN',
+
+  'سباك': 'PLUMBER',
+  'فني سباكة': 'PLUMBER',
+  'عامل سباكة': 'PLUMBER',
+  'بلومبي': 'PLUMBER',
+
+  'مكيف': 'HVAC_TECHNICIAN',
+  'فني مكيفات': 'HVAC_TECHNICIAN',
+  'تكييف': 'HVAC_TECHNICIAN',
+
+  'دهان': 'PAINTER',
+  'نقاش': 'PAINTER',
+  'صباغ': 'PAINTER',
+  'عامل دهان': 'PAINTER',
+  'دهان منازل': 'PAINTER',
+
+  'نجار': 'CARPENTER',
+  'فني نجارة': 'CARPENTER',
+  'نجار خشب': 'CARPENTER',
+
+  'ألمنيوم': 'ALUMINUM_TECHNICIAN',
+  'فني ألمنيوم': 'ALUMINUM_TECHNICIAN',
+
+  'مبلط': 'TILER',
+  'رخامي': 'TILER',
+  'سيراميك': 'TILER',
+
+  'لحام': 'WELDER',
+  'فني لحام': 'WELDER',
+
+  'حداد': 'METAL_FABRICATOR',
+  'مصفح': 'METAL_FABRICATOR',
+  'فني ميتال': 'METAL_TECHNICIAN',
+  'ميتال': 'METAL_TECHNICIAN',
+  'تشكيل حديد': 'METAL_TECHNICIAN',
+
+  'مصعد': 'ELEVATOR_TECHNICIAN',
+  'فني مصاعد': 'ELEVATOR_TECHNICIAN',
+  'تركيب مصاعد': 'ELEVATOR_TECHNICIAN',
+  'صيانة مصاعد': 'ELEVATOR_TECHNICIAN',
+  'سلم كهربائي': 'ESCALATOR_TECHNICIAN',
+  'سلالم كهربائية': 'ESCALATOR_TECHNICIAN',
+  'فني سلالم': 'ESCALATOR_TECHNICIAN',
+  'ممر متحرك': 'MOVING_WALKWAY_TECHNICIAN',
+  'ممرات متحركة': 'MOVING_WALKWAY_TECHNICIAN',
+
+  'أبواب أوتوماتيك': 'AUTOMATIC_DOOR_TECHNICIAN',
+  'باب اوتوماتيك': 'AUTOMATIC_DOOR_TECHNICIAN',
+  'فني بوابات': 'AUTOMATIC_DOOR_TECHNICIAN',
+
+  'شتر': 'SHUTTER_TECHNICIAN',
+  'رول': 'SHUTTER_TECHNICIAN',
+  'بوابة سحابة': 'SHUTTER_TECHNICIAN',
+
+  'طاقة شمسية': 'SOLAR_TECHNICIAN',
+  'فني سولار': 'SOLAR_TECHNICIAN',
+  'تركيب ألواح': 'SOLAR_TECHNICIAN',
+
+  // Technical
+  'دعم فني': 'IT_SUPPORT_SPECIALIST',
+  'IT': 'IT_SUPPORT_SPECIALIST',
+  'مبرمج': 'WEB_DEVELOPER',
+  'مطور': 'WEB_DEVELOPER',
+  'ويب': 'WEB_DEVELOPER',
+  'تطبيقات': 'APP_DEVELOPER',
+  'شبكات': 'NETWORK_ENGINEER',
+  'فني شبكات': 'NETWORK_ENGINEER',
+  'تحليل بيانات': 'DATA_ANALYST',
+  'داتا': 'DATA_ANALYST',
+  'أمن سيبراني': 'CYBERSECURITY_SPECIALIST',
+
+  'GPS': 'VEHICLE_GPS_TECHNICIAN',
+  'جي بي اس': 'VEHICLE_GPS_TECHNICIAN',
+  'تتبع مركبات': 'VEHICLE_GPS_TECHNICIAN',
+
+  'كاميرات مراقبة': 'CCTV_TECHNICIAN',
+  'CCTV': 'CCTV_TECHNICIAN',
+  'سي سي تي في': 'CCTV_TECHNICIAN',
+  'أنظمة أمنية': 'CCTV_TECHNICIAN',
+
+  'إنذار حريق': 'FIRE_ALARM_TECHNICIAN',
+  'Fire Alarm': 'FIRE_ALARM_TECHNICIAN',
+  'كشف دخان': 'FIRE_ALARM_TECHNICIAN',
+  'كواشف دخان': 'FIRE_ALARM_TECHNICIAN',
+  'لوحة إنذار حريق': 'FIRE_ALARM_TECHNICIAN',
+
+  'قفل ذكي': 'SMART_LOCK_TECHNICIAN',
+  'أقفال ذكية': 'SMART_LOCK_TECHNICIAN',
+  'قفل إلكتروني': 'SMART_LOCK_TECHNICIAN',
+  'Access Control': 'ACCESS_CONTROL_TECHNICIAN',
+  'أنظمة دخول': 'ACCESS_CONTROL_TECHNICIAN',
+  'تحكم بالدخول': 'ACCESS_CONTROL_TECHNICIAN',
+  'بصمة': 'BIOMETRIC_ACCESS_TECHNICIAN',
+  'دخول ذكي': 'BIOMETRIC_ACCESS_TECHNICIAN',
+  'Face Recognition': 'BIOMETRIC_ACCESS_TECHNICIAN',
+  'تعرف وجه': 'BIOMETRIC_ACCESS_TECHNICIAN',
+
+  'فني أجهزة': 'APPLIANCE_TECHNICIAN',
+  'فني ثلاجات': 'APPLIANCE_TECHNICIAN',
+  'فني غسالات': 'APPLIANCE_TECHNICIAN',
+  'فني جوالات': 'MOBILE_REPAIR_TECH',
+  'صيانة هواتف': 'MOBILE_REPAIR_TECH',
+  'فني كمبيوتر': 'COMPUTER_TECHNICIAN',
+  'صيانة كمبيوتر': 'COMPUTER_TECHNICIAN',
+
+  // Creative & media
+  'جرافيك': 'GRAPHIC_DESIGNER',
+  'مصمم جرافيك': 'GRAPHIC_DESIGNER',
+  'مصمم': 'GRAPHIC_DESIGNER',
+  'موشن': 'MOTION_DESIGNER',
+  'مونتاج': 'VIDEO_EDITOR',
+  'مونتير': 'VIDEO_EDITOR',
+  'تصوير فيديو': 'VIDEOGRAPHER',
+  'مصور': 'PHOTOGRAPHER',
+  'فوتوغرافر': 'PHOTOGRAPHER',
+  'فويس أوفر': 'VOICEOVER_ARTIST',
+  'معلق صوتي': 'VOICEOVER_ARTIST',
+  'كرييتور': 'CONTENT_CREATOR',
+  'مؤثر': 'CONTENT_CREATOR',
+  'كاتب إعلاني': 'COPYWRITER',
+  'كوبي رايتر': 'COPYWRITER',
+  'مترجم': 'TRANSLATOR',
+  'مهندس ديكور': 'INTERIOR_DESIGNER',
+  'منسق فعاليات': 'EVENT_DESIGNER',
+  'مقدم': 'PRESENTER',
+
+  'أفراح': 'WEDDING_PLANNER',
+  'زواج': 'WEDDING_PLANNER',
+  'منسق أعراس': 'WEDDING_PLANNER',
+  'منظم مناسبات': 'WEDDING_PLANNER',
+
+  // Professional
+  'محاسب': 'ACCOUNTANT',
+  'محاسب زكاة': 'ACCOUNTANT',
+  'مراجع': 'AUDITOR',
+  'محامي': 'LEGAL_ADVISOR',
+  'مستشار قانوني': 'LEGAL_ADVISOR',
+  'ضرائب': 'TAX_CONSULTANT',
+  'زكاة': 'TAX_CONSULTANT',
+  'عقارات': 'REAL_ESTATE_BROKER',
+  'سمسار': 'REAL_ESTATE_BROKER',
+  'مكتب عقار': 'REAL_ESTATE_BROKER',
+  'مسوق': 'MARKETING_SPECIALIST',
+  'تسويق': 'MARKETING_SPECIALIST',
+  'HR': 'HR_SPECIALIST',
+  'موارد بشرية': 'HR_SPECIALIST',
+  'مدير مشاريع': 'PROJECT_MANAGER',
+  'ISO': 'QUALITY_CONSULTANT',
+
+  'معقب': 'TRANSACTION_FACILITATOR',
+  'تخليص': 'TRANSACTION_FACILITATOR',
+  'إنجاز معاملات': 'TRANSACTION_FACILITATOR',
+
+  'مهندس': 'ENGINEER',
+  'مدير إداري': 'ADMINISTRATIVE_MANAGER',
+  'مدير مكتب': 'ADMINISTRATIVE_MANAGER',
+  'إداري': 'ADMINISTRATIVE_MANAGER',
+
+  // Care
+  'ممرض': 'NURSE',
+  'ممرضة': 'NURSE',
+  'تمريض': 'NURSE',
+
+  'ممرض منزلي': 'HOME_NURSE',
+  'ممرضة منزلية': 'HOME_NURSE',
+
+  'رعاية مسنين': 'CAREGIVER',
+  'جليسة': 'CAREGIVER',
+  'مقدم رعاية': 'CAREGIVER',
+
+  // Tourism & hospitality
+  'مرشد': 'TOUR_GUIDE',
+  'مرشد سياحي': 'TOUR_GUIDE',
+  'خدمات سياحية': 'TOUR_GUIDE',
+  'سياحة': 'TOUR_GUIDE',
+  'guide': 'TOUR_GUIDE',
+  'وكيل سفر': 'TRAVEL_CONSULTANT',
+  'فندق': 'HOTEL_STAFF',
+  'ضيافة': 'HOTEL_STAFF',
+  'مضيف فعاليات': 'EVENT_USHER',
+
+  // Beauty & wellness
+  'حلاق': 'BARBER',
+  'حلاق رجالي': 'BARBER',
+  'كوافير': 'HAIRDRESSER',
+  'كوافيرة': 'HAIRDRESSER',
+  'ميك اب': 'MAKEUP_ARTIST',
+  'مكياج': 'MAKEUP_ARTIST',
+  'حناء': 'HENNA_ARTIST',
+  'نقش حناء': 'HENNA_ARTIST',
+
+  // Traditional crafts
+  'تطريز': 'EMBROIDERER',
+  'تطريز يدوي': 'HAND_EMBROIDERER',
+  'مطرز يدوي': 'HAND_EMBROIDERER',
+  'خياط': 'TAILOR',
+  'عطور': 'PERFUMER',
+  'عطار': 'PERFUMER',
+  'خطاط': 'CALLIGRAPHER',
+  'خزاف': 'POTTER',
+  'أرجيلة': 'HOOKAH_CRAFTSMAN',
+  'شيشة': 'HOOKAH_CRAFTSMAN',
+
+  'صائغ': 'GOLDSMITH',
+  'صياغة ذهب': 'GOLDSMITH',
+  'ذهب': 'GOLDSMITH',
+  'صياغة فضة': 'SILVERSMITH',
+  'فضة': 'SILVERSMITH',
+  'مجوهرات': 'JEWELER',
+  'صناعة مجوهرات': 'JEWELER',
+  'إصلاح مجوهرات': 'JEWELRY_REPAIRER',
+  'تصليح ذهب': 'JEWELRY_REPAIRER',
+  'ساعاتي': 'WATCHMAKER',
+  'إصلاح ساعات': 'WATCHMAKER',
+  'قص مفاتيح': 'KEY_CUTTER',
+  'كوالين': 'LOCKSMITH',
+  'فتح أقفال': 'LOCKSMITH',
+  'أقفال': 'LOCKSMITH',
+  'مفاتيح سيارات': 'CAR_KEY_TECHNICIAN',
+  'برمجة مفاتيح': 'CAR_KEY_TECHNICIAN',
+
+  // Food & beverage
+  'شيف': 'CHEF',
+  'طباخ': 'CHEF',
+  'خباز': 'BAKER',
+  'حلواني': 'PASTRY_CHEF',
+  'قهوة': 'BARISTA',
+  'باريستا': 'BARISTA',
+  'جزار': 'BUTCHER',
+  'قصاب': 'BUTCHER',
+  'لحوم': 'BUTCHER',
+
+  // Agriculture & animals
+  'مواشي': 'LIVESTOCK_BREEDER',
+  'أغنام': 'LIVESTOCK_BREEDER',
+  'مزارع': 'FARMER',
+  'نحال': 'BEEKEEPER',
+  'تمور': 'DATE_FARMER',
+  'صياد': 'FISHERMAN',
+
+  'أحواض سمك': 'AQUARIUM_TECHNICIAN',
+  'حوض سمك': 'AQUARIUM_TECHNICIAN',
+  'أكواريوم': 'AQUARIUM_TECHNICIAN',
+
+  'طيور زينة': 'BIRD_BREEDER',
+  'مربي طيور': 'BIRD_BREEDER',
+  'عصافير': 'BIRD_BREEDER',
+
+  'أعلاف': 'FEED_TECHNICIAN',
+  'فني علف': 'FEED_TECHNICIAN',
+
+  'سايس': 'HORSE_GROOM',
+  'سايس خيل': 'HORSE_GROOM',
+  'مضمر خيول': 'HORSE_GROOM',
+
+  'إبل': 'CAMEL_BREEDER',
+  'هجن': 'CAMEL_BREEDER',
+  'مربي هجن': 'CAMEL_BREEDER',
+  'سايس جمل': 'CAMEL_CARETAKER',
+  'سايس نوق': 'CAMEL_CARETAKER',
+  'سايس إبل': 'CAMEL_CARETAKER',
+  'مضمر': 'CAMEL_RACING_TRAINER',
+  'مضمر هجن': 'CAMEL_RACING_TRAINER',
+  'مدرب هجن': 'CAMEL_TRAINER',
+  'هجان': 'CAMEL_TRAINER',
+
+  // Performing arts
+  'مقرئ': 'QURAN_READER',
+  'قارئ قرآن': 'QURAN_READER',
+  'تلاوة': 'QURAN_READER',
+
+  'قاص': 'STORYTELLER',
+  'راوي': 'STORYTELLER',
+  'حكواتي': 'STORYTELLER',
+
+  'ممثل': 'ACTOR',
+  'موسيقي': 'MUSICIAN',
+  'مطرب': 'MUSICIAN',
+  'مسحراتي': 'MESAHARTY',
+
+  // Sports
+  'مدرب كرة قدم': 'FOOTBALL_COACH',
+  'مدرب لياقة': 'PERSONAL_TRAINER',
+  'فتنس': 'PERSONAL_TRAINER',
+
+  // Education
+  'معلم': 'PRIVATE_TUTOR',
+  'مدرب': 'CORPORATE_TRAINER',
+  'معلم دين': 'RELIGIOUS_TEACHER',
+  'راوي حديث': 'HADITH_NARRATOR',
+  'محدث': 'HADITH_NARRATOR',
+  'مرشد توجيهي': 'MENTOR',
+
+  'صيدلي': 'PHARMACIST',
+  'دواء': 'PHARMACIST',
+  'فني أشعة': 'RADIOLOGY_TECHNICIAN',
+  'أشعة': 'RADIOLOGY_TECHNICIAN',
+  'فني مختبر': 'LAB_TECHNICIAN',
+  'تحاليل': 'LAB_TECHNICIAN',
+  'تغذية': 'DIETITIAN',
+  'أخصائية تغذية': 'DIETITIAN',
+  'دايت': 'DIETITIAN',
+  'مساعد صحي': 'HEALTHCARE_ASSISTANT',
+  'مساعد طبي': 'HEALTHCARE_ASSISTANT',
+  'ممرض كبار السن': 'ELDERLY_CARE_NURSE',
+  'ممرضة كبار السن': 'ELDERLY_CARE_NURSE',
+
+  // Management & consulting
+  'مستشار أعمال': 'BUSINESS_CONSULTANT',
+  'خبير أعمال': 'BUSINESS_CONSULTANT',
+  'لوجستيات': 'LOGISTICS_CONSULTANT',
+  'نقل': 'LOGISTICS_CONSULTANT',
+  'تخزين': 'LOGISTICS_CONSULTANT',
+  'تطوع': 'VOLUNTEER_COORDINATOR',
+  'متطوع': 'VOLUNTEER_COORDINATOR',
+
+  // Domestic services
+  'خادمة': 'DOMESTIC_HELPER',
+  'عاملة منزلية': 'DOMESTIC_HELPER',
+  'عمالة منزلية': 'DOMESTIC_HELPER',
+
+  'مربية أطفال': 'CHILDCARE_PROVIDER',
+  'جليسة أطفال': 'CHILDCARE_PROVIDER',
+  'بيبي سيتر': 'CHILDCARE_PROVIDER',
+  'حاضنة': 'CHILDCARE_PROVIDER',
+
+  'ناطور': 'HOME_CARETAKER',
+  'بواب': 'HOME_CARETAKER',
+  'حارس منزل': 'HOME_CARETAKER',
+  'حارس باب': 'HOME_CARETAKER',
+
+  'حارس': 'SECURITY_GUARD',
+  'حارس أمن': 'SECURITY_GUARD',
+  'أمن': 'SECURITY_GUARD',
+  'حراسة': 'SECURITY_GUARD',
+  'مشرف أمن': 'SECURITY_SUPERVISOR',
+  'مشرف حراسة': 'SECURITY_SUPERVISOR',
+  'حارس منشآت': 'FACILITY_SECURITY_GUARD',
+  'أمن منشآت': 'FACILITY_SECURITY_GUARD',
+
+  // Vehicles & transport
+  'تأجير سيارات': 'CAR_RENTAL_AGENT',
+  'مكتب تأجير': 'CAR_RENTAL_AGENT',
+  'استئجار سيارات': 'CAR_RENTAL_AGENT',
+
+  'سائق': 'PRIVATE_DRIVER',
+  'سواق': 'PRIVATE_DRIVER',
+  'سائق خاص': 'PRIVATE_DRIVER',
+  'توصيل': 'PRIVATE_DRIVER',
+};

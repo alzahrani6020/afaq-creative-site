@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap');
+
+body {
+  font-family: 'Tajawal', 'Poppins', system-ui, sans-serif;
+  background-color: #0A0E1A;
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+::selection {
+  background-color: #c5a259;
+  color: #0A0E1A;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #0A0E1A; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #0b5aa2, #c5a259); border-radius: 4px; }
+
+@layer components {
+  .wizard-progress-item { @apply flex items-center gap-2 text-white/40 font-semibold; }
+  .wizard-progress-item .num { @apply w-6 h-6 flex items-center justify-center rounded-full bg-white/10 text-xs; }
+  .wizard-progress-item.active { @apply text-afaq-gold; }
+  .wizard-progress-item.active .num { @apply bg-afaq-gold text-afaq-bg; }
+  .wizard-progress-line { @apply flex-1 h-0.5 bg-white/10 mx-1; }
+
+  .cat-card { @apply flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/[0.08] text-white cursor-pointer transition-all; }
+  .cat-card:hover { @apply border-afaq-gold/40; }
+  .cat-card.active { @apply border-afaq-gold bg-afaq-gold/10; }
+
+  .field-card { @apply flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/[0.08] text-white cursor-pointer transition-all; }
+  .field-card:hover { @apply border-afaq-gold/40; }
+  .field-card.active { @apply border-afaq-gold bg-afaq-gold/10; }
+
+  .sanaei-box { @apply border border-afaq-gold/30 bg-afaq-gold/[0.08] rounded-2xl p-4 mb-4; }
+
+  .chip { @apply inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/80 cursor-pointer transition-all text-sm; }
+  .chip:hover { @apply border-afaq-gold/40; }
+  .chip.active { @apply border-afaq-gold bg-afaq-gold/10 text-afaq-gold; }
+}
+
+@media (max-width: 640px) {
+  .wizard-progress-item span:not(.num) { display: none; }
+  .wizard-progress-item .num { width: 2rem; height: 2rem; }
+}

@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ApplicationStatus {
+  new
+  under_review
+  qualified
+  need_information
+  contacted
+  accepted
+  rejected
+}
+
+enum EmailStatus {
+  pending
+  sent
+  failed
+  verified
+}
+
+model TalentApplication {
+  id                String            @id @default(cuid())
+  applicationNumber String            @unique
+  category          String
+  fields            String
+  specialized       String            // JSON string - kept for backward compatibility
+  personal          String            // JSON string - kept for backward compatibility
+  phone             String?
+  email             String?
+  attachments       String            // JSON string
+  status            ApplicationStatus @default(new)
+  adminNotes        String?
+
+  // Location & service scope (Sanaiee phase 1)
+  country           String?
+  region            String?
+  city              String?
+  district          String?
+  serviceArea       String?           // JSON array of strings
+  workPlace         String?           // JSON array of strings
+
+  // Sanaiee platform consent
+  sanaieePlatformConsent Boolean      @default(false)
+  sanaieeConsentAt   DateTime?
+  sanaieeProfileStatus String         @default("not_interested")
+  emailVerified     Boolean           @default(false)
+  emailVerifiedAt   DateTime?
+  emailStatus       EmailStatus       @default(pending)
+  emailSentAt       DateTime?
+  emailFailedAt     DateTime?
+  emailError        String?
+  emailMessageId    String?
+  adminNotified     Boolean           @default(false)
+
+  createdAt         DateTime          @default(now())
+  emailVerificationTokens EmailVerificationToken[]
+  updatedAt         DateTime          @updatedAt
+  activities        TalentApplicationActivity[]
+  skillProfiles     ApplicantSkillProfile[]
+
+  @@index([applicationNumber])
+  @@index([phone])
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AdminUser {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  passwordHash  String
+  role          String   @default("admin")
+  isActive      Boolean  @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  activities    TalentApplicationActivity[]
+  accountLogs   AdminActivity[]
+  trustedDevices TrustedDevice[]
+}
+
+model TrustedDevice {
+  id          String    @id @default(cuid())
+  adminUserId String
+  deviceName  String
+  tokenHash   String
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+}
+
+model OAuthLoginAttempt {
+  id        String   @id @default(cuid())
+  outcome   String
+  detail    String?
+  hasCode   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model TalentApplicationActivity {
+  id            String   @id @default(cuid())
+  applicationId String
+  adminUserId   String?
+  action        String
+  oldValue      String?
+  newValue      String?
+  createdAt     DateTime @default(now())
+
+  application TalentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  adminUser   AdminUser?        @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId])
+  @@index([createdAt])
+}
+
+model AdminActivity {
+  id          String   @id @default(cuid())
+  adminUserId String
+  action      String
+  metadata    String?  // JSON string
+  createdAt   DateTime @default(now())
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([createdAt])
+}
+
+model EmailVerificationToken {
+  id            String   @id @default(cuid())
+  token         String   @unique
+  applicationId String
+  expiresAt     DateTime
+  used          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  application TalentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([applicationId])
+}
+
+model ApplicantSkillProfile {
+  id                            String   @id @default(cuid())
+  applicationId                 String
+  profileType                   String   // حرفي, فني, مهني, متخصص, موهوب, مبدع, خبير / مستشار, مقدم خدمة
+  sector                        String?  // القطاع
+  profession                    String   // المهنة / الحرفة / الموهبة
+  specializations               String   // JSON array of strings
+  services                      String   // JSON array of strings
+  skillLevel                    String?  // متدرب, مبتدئ, ممارس, محترف, خبير, معلم / مدرب
+  yearsExperience               String?  // e.g. 1-3
+  description                   String?  // max 500 chars
+  isPrimary                     Boolean  @default(false)
+  isCustomProfession            Boolean  @default(false)
+  verificationStatus            String   @default("unverified") // unverified, pending, verified
+
+  // Custom profession fallback
+  customProfessionName          String?
+  customProfessionLocalName     String?
+  customProfessionDescription   String?
+  customProfessionClosestSector String?
+
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  application TalentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([isPrimary])
+}

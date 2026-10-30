@@ -1,0 +1,17 @@
+{
+  "cpu_model": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel",
+  "cpu_cores": 22,
+  "ram_total_gb": 15.4,
+  "gpus": [
+    {
+      "vendor": "intel",
+      "model": "Intel(R) Arc(TM) Graphics",
+      "vram_gb": null
+    }
+  ],
+  "accelerators": [],
+  "detected_at": "2026-09-10T09:17:28.197039+00:00",
+  "profile": "gpu_entry",
+  "fingerprint": "7e387f63e485ae01df87094ef082e934b90fde7a",
+  "profile_key": "gpu_entry:7e387f63e485"
+}

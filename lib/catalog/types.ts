@@ -43,21 +43,35 @@ export interface ProfessionOption {
   requiresLicense?: boolean;
 }
 
+export type ArabRegionGroup = 'gcc' | 'levant' | 'north-africa' | 'nile' | 'horn-africa' | 'other-arab';
+export type CountryAvailability = 'active' | 'beta' | 'disabled';
+
 export interface CountryOption {
+  /** Stable ISO 3166-1 alpha-2 code used as the persisted value. */
   value: string;
   label: string;
+  labelEn?: string;
+  iso3?: string;
   dialCode?: string;
   flag?: string;
+  currency?: string;
+  timezones?: string[];
+  aliases?: string[];
+  regionGroup?: ArabRegionGroup;
+  availability?: CountryAvailability;
   regions: RegionOption[];
 }
 
 export interface RegionOption {
+  /** Stable internal slug. Existing slugs must never be renamed without a migration. */
   value: string;
   label: string;
+  labelEn?: string;
   cities: CityOption[];
 }
 
 export interface CityOption {
   value: string;
   label: string;
+  labelEn?: string;
 }

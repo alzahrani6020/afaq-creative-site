@@ -11,11 +11,12 @@ export async function middleware(req: NextRequest) {
   }
 
   const res = NextResponse.next();
+  res.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
   const session = await getIronSession<AdminSession>(req, res, sessionOptions);
 
-  // One shell only: logged-in users never see the login card again.
   if (pathname === '/admin/login' && session.isLoggedIn) {
-    return NextResponse.redirect(new URL('/admin/talents', req.url));
+    return NextResponse.redirect(new URL('/admin/dashboard', req.url));
   }
 
   if (pathname !== '/admin/login' && !session.isLoggedIn) {

@@ -77,6 +77,7 @@ export default function AdminTalentsPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [country, setCountry] = useState('');
   const [page, setPage] = useState(1);
 
   const fetchTalents = async () => {
@@ -87,6 +88,7 @@ export default function AdminTalentsPage() {
     params.set('page', String(page));
     if (search) params.set('search', search);
     if (status) params.set('status', status);
+    if (country) params.set('country', country);
 
     try {
       const res = await fetch(`/api/admin/talents?${params.toString()}`);
@@ -113,7 +115,7 @@ export default function AdminTalentsPage() {
   useEffect(() => {
     fetchTalents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, status]);
+  }, [page, status, country]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,6 +126,7 @@ export default function AdminTalentsPage() {
   const handleExport = () => {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
+    if (country) params.set('country', country);
     window.open(`/api/admin/talents/export?${params.toString()}`, '_blank');
   };
 
@@ -181,6 +184,21 @@ export default function AdminTalentsPage() {
               placeholder="بحث برقم الطلب، الجوال، البريد..."
               className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pr-10 pl-4 text-white placeholder-white/30 focus:outline-none focus:border-afaq-teal"
             />
+          </div>
+
+          <div className="relative min-w-[200px]">
+            <select
+              value={country}
+              onChange={(e) => { setCountry(e.target.value); setPage(1); }}
+              className="w-full appearance-none bg-white/5 border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-afaq-teal"
+            >
+              <option value="" className="bg-afaq-bg">كل الدول</option>
+              {countries.map((item) => (
+                <option key={item.value} value={item.value} className="bg-afaq-bg">
+                  {item.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="relative min-w-[200px]">

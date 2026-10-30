@@ -17,12 +17,16 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, Number(searchParams.get('page') || '1'));
     const search = searchParams.get('search')?.trim() || '';
     const status = searchParams.get('status') as ApplicationStatus | null;
+    const country = searchParams.get('country')?.trim().toUpperCase() || '';
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const order = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
 
     const where: any = {};
     if (status && ApplicationStatusValues.includes(status as typeof ApplicationStatusValues[number])) {
       where.status = status;
+    }
+    if (country) {
+      where.country = country;
     }
     if (search) {
       where.OR = [

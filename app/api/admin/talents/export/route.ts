@@ -35,11 +35,13 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') as ApplicationStatus | null;
+    const country = searchParams.get('country')?.trim().toUpperCase() || '';
 
     const where: any = {};
     if (status && ApplicationStatusValues.includes(status as typeof ApplicationStatusValues[number])) {
       where.status = status;
     }
+    if (country) where.country = country;
 
     const talents = await prisma.talentApplication.findMany({
       where,
@@ -54,6 +56,9 @@ export async function GET(req: NextRequest) {
       'الاسم',
       'رقم الجوال',
       'البريد الإلكتروني',
+      'الدولة',
+      'المنطقة',
+      'المدينة',
       'الحالة',
       'الملاحظات الإدارية',
       'تاريخ التقديم',
@@ -89,6 +94,9 @@ export async function GET(req: NextRequest) {
         fullName,
         t.phone || '',
         t.email || '',
+        t.country || '',
+        t.region || '',
+        t.city || '',
         t.status,
         t.adminNotes || '',
         t.createdAt.toISOString(),

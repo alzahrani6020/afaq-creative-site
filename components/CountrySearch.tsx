@@ -21,7 +21,13 @@ export function CountrySearch({ value, onChange, error }: CountrySearchProps) {
   const filtered = countries.filter((c) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    return c.label.includes(q) || c.value.toLowerCase().includes(q);
+    return (
+      c.label.toLowerCase().includes(q) ||
+      c.value.toLowerCase().includes(q) ||
+      c.labelEn?.toLowerCase().includes(q) ||
+      c.aliases?.some((alias) => alias.toLowerCase().includes(q)) ||
+      false
+    );
   });
 
   useEffect(() => {

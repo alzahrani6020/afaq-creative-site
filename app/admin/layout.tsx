@@ -1,12 +1,26 @@
+import type { Metadata } from 'next';
 import { getAdminSession } from '@/lib/session';
 import { AdminHeader } from '@/components/AdminHeader';
+
+export const metadata: Metadata = {
+  title: 'لوحة إدارة أفاق',
+  description: 'لوحة الإدارة الداخلية لأفاق إبداعية',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
+};
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getAdminSession();
   const loggedIn = Boolean(session.isLoggedIn);
 
-  // Single admin shell: header only after login.
-  // Login page is a standalone card (no second chrome bar).
   if (!loggedIn) {
     return (
       <div className="min-h-screen bg-afaq-bg flex flex-col">

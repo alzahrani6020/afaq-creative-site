@@ -1,4 +1,5 @@
 import { CountryOption } from './types';
+import { extraArabCountries } from './locations-arab-extra';
 
 export const countryDialCodes: Record<string, string> = {
   SA: '966',
@@ -10,9 +11,30 @@ export const countryDialCodes: Record<string, string> = {
   OM: '968',
   JO: '962',
   LB: '961',
+  IQ: '964', SY: '963', PS: '970', YE: '967', MA: '212', DZ: '213', TN: '216', LY: '218', SD: '249',
+  SO: '252', DJ: '253', KM: '269', MR: '222',
 };
 
-export const countries: CountryOption[] = [
+
+const countryMetadata: Record<string, Partial<CountryOption>> = {
+  SA: { labelEn: 'Saudi Arabia', iso3: 'SAU', currency: 'SAR', timezones: ['Asia/Riyadh'], aliases: ['KSA', 'Saudi', 'Saudi Arabia'], regionGroup: 'gcc', availability: 'active' },
+  EG: { labelEn: 'Egypt', iso3: 'EGY', currency: 'EGP', timezones: ['Africa/Cairo'], aliases: ['Egypt', 'Misr'], regionGroup: 'nile', availability: 'active' },
+  AE: { labelEn: 'United Arab Emirates', iso3: 'ARE', currency: 'AED', timezones: ['Asia/Dubai'], aliases: ['UAE', 'Emirates'], regionGroup: 'gcc', availability: 'active' },
+  KW: { labelEn: 'Kuwait', iso3: 'KWT', currency: 'KWD', timezones: ['Asia/Kuwait'], aliases: ['Kuwait'], regionGroup: 'gcc', availability: 'active' },
+  BH: { labelEn: 'Bahrain', iso3: 'BHR', currency: 'BHD', timezones: ['Asia/Bahrain'], aliases: ['Bahrain'], regionGroup: 'gcc', availability: 'active' },
+  QA: { labelEn: 'Qatar', iso3: 'QAT', currency: 'QAR', timezones: ['Asia/Qatar'], aliases: ['Qatar'], regionGroup: 'gcc', availability: 'active' },
+  OM: { labelEn: 'Oman', iso3: 'OMN', currency: 'OMR', timezones: ['Asia/Muscat'], aliases: ['Oman'], regionGroup: 'gcc', availability: 'active' },
+  JO: { labelEn: 'Jordan', iso3: 'JOR', currency: 'JOD', timezones: ['Asia/Amman'], aliases: ['Jordan'], regionGroup: 'levant', availability: 'active' },
+  LB: { labelEn: 'Lebanon', iso3: 'LBN', currency: 'LBP', timezones: ['Asia/Beirut'], aliases: ['Lebanon'], regionGroup: 'levant', availability: 'active' },
+};
+
+const countryFlags: Record<string, string> = {
+  SA: '🇸🇦', EG: '🇪🇬', AE: '🇦🇪', KW: '🇰🇼', BH: '🇧🇭', QA: '🇶🇦', OM: '🇴🇲', JO: '🇯🇴', LB: '🇱🇧',
+  IQ: '🇮🇶', SY: '🇸🇾', PS: '🇵🇸', YE: '🇾🇪', MA: '🇲🇦', DZ: '🇩🇿', TN: '🇹🇳', LY: '🇱🇾', SD: '🇸🇩',
+  SO: '🇸🇴', DJ: '🇩🇯', KM: '🇰🇲', MR: '🇲🇷',
+};
+
+const baseCountries: CountryOption[] = [
   {
     value: 'SA',
     label: 'السعودية',
@@ -266,8 +288,20 @@ export const countries: CountryOption[] = [
   },
 ];
 
+export const countries: CountryOption[] = [...baseCountries, ...extraArabCountries].map((country) => ({
+  ...country,
+  ...countryMetadata[country.value],
+  flag: country.flag || countryFlags[country.value],
+}));
+
 export function getCountry(value: string): CountryOption | undefined {
-  return countries.find((c) => c.value === value);
+  const normalized = value.trim().toLowerCase();
+  return countries.find((c) =>
+    c.value.toLowerCase() === normalized ||
+    c.label.toLowerCase() === normalized ||
+    c.labelEn?.toLowerCase() === normalized ||
+    c.aliases?.some((alias) => alias.toLowerCase() === normalized)
+  );
 }
 
 export function getRegion(countryValue: string, regionValue: string) {

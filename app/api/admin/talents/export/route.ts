@@ -31,7 +31,7 @@ function formatPhone(value: string): string {
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAdmin(req);
+    const admin = await requireAdmin(req);
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') as ApplicationStatus | null;
@@ -119,6 +119,22 @@ export async function GET(req: NextRequest) {
 
     // BOM helps Excel recognize UTF-8 Arabic content.
     const csv = '\uFEFF' + csvBody;
+
+    try {
+      await prisma.adminActivity.create({
+        data: {
+          adminUserId: admin.id,
+          action: 'talents_export_csv',
+          metadata: JSON.stringify({
+            status: status || null,
+            country: country || null,
+            rowCount: talents.length,
+          }),
+        },
+      });
+    } catch (auditError) {
+      console.error('Admin export audit log failed:', auditError);
+    }
 
     return new NextResponse(csv, {
       headers: {

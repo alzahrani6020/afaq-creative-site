@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BarChart3, LayoutDashboard, LogOut, Settings, User, Users } from 'lucide-react';
+import { BarChart3, FileClock, LayoutDashboard, LogOut, Settings, User, Users } from 'lucide-react';
 
 interface AdminHeaderProps {
   admin?: {
@@ -52,6 +52,10 @@ export function AdminHeader({ admin }: AdminHeaderProps) {
             <Link href="/admin/analytics" className={`inline-flex items-center gap-1.5 ${navClass('/admin/analytics')}`}>
               <BarChart3 className="w-4 h-4" />
               التحليلات
+            </Link>
+            <Link href="/admin/audit" className={`inline-flex items-center gap-1.5 ${navClass('/admin/audit')}`}>
+              <FileClock className="w-4 h-4" />
+              سجل التدقيق
             </Link>
           </nav>
         </div>

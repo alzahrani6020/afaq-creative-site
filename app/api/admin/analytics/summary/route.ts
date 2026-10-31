@@ -4,6 +4,8 @@ import { createSign } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, UnauthorizedError } from '@/lib/admin-auth';
 
+type RangeKey = '7d' | '30d' | '90d';
+
 class GoogleApiError extends Error {
   stage: 'oauth' | 'ga4';
   httpStatus: number;
@@ -39,6 +41,28 @@ function safeGoogleMessage(value: unknown, fallback: string) {
   return value.replace(/[\r\n\t]+/g, ' ').slice(0, 500);
 }
 
+function rangeConfig(range: RangeKey) {
+  if (range === '7d') {
+    return {
+      label: 'آخر 7 أيام',
+      current: { startDate: '6daysAgo', endDate: 'today' },
+      previous: { startDate: '13daysAgo', endDate: '7daysAgo' },
+    };
+  }
+  if (range === '90d') {
+    return {
+      label: 'آخر 90 يومًا',
+      current: { startDate: '89daysAgo', endDate: 'today' },
+      previous: { startDate: '179daysAgo', endDate: '90daysAgo' },
+    };
+  }
+  return {
+    label: 'آخر 30 يومًا',
+    current: { startDate: '29daysAgo', endDate: 'today' },
+    previous: { startDate: '59daysAgo', endDate: '30daysAgo' },
+  };
+}
+
 async function getAccessToken(email: string, privateKey: string) {
   const now = Math.floor(Date.now() / 1000);
   const header = base64Url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
@@ -61,7 +85,7 @@ async function getAccessToken(email: string, privateKey: string) {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth-grant-type:jwt-bearer'.replace('oauth-grant-type', 'oauth:grant-type'),
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
       assertion,
     }),
     cache: 'no-store',
@@ -79,7 +103,11 @@ async function getAccessToken(email: string, privateKey: string) {
   return tokenJson.access_token as string;
 }
 
-async function runReport(propertyId: string, accessToken: string) {
+async function runReport(
+  propertyId: string,
+  accessToken: string,
+  body: Record<string, unknown>
+) {
   const response = await fetch(
     `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`,
     {
@@ -88,19 +116,7 @@ async function runReport(propertyId: string, accessToken: string) {
         authorization: `Bearer ${accessToken}`,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
-        metrics: [
-          { name: 'activeUsers' },
-          { name: 'sessions' },
-          { name: 'screenPageViews' },
-          { name: 'engagedSessions' },
-          { name: 'engagementRate' },
-          { name: 'averageSessionDuration' },
-          { name: 'eventCount' },
-          { name: 'keyEvents' },
-        ],
-      }),
+      body: JSON.stringify(body),
       cache: 'no-store',
     }
   );
@@ -118,6 +134,91 @@ async function runReport(propertyId: string, accessToken: string) {
   return json;
 }
 
+function numberValue(value: unknown) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function metricMap(report: any) {
+  const names = (report.metricHeaders || []).map((item: { name: string }) => item.name);
+  const values = report.rows?.[0]?.metricValues || [];
+  const metrics: Record<string, number> = {};
+  names.forEach((name: string, index: number) => {
+    metrics[name] = numberValue(values[index]?.value);
+  });
+  return metrics;
+}
+
+function rows(report: any) {
+  const dimensions = (report.dimensionHeaders || []).map((item: { name: string }) => item.name);
+  const metrics = (report.metricHeaders || []).map((item: { name: string }) => item.name);
+  return (report.rows || []).map((row: any) => {
+    const item: Record<string, string | number> = {};
+    dimensions.forEach((name: string, index: number) => {
+      item[name] = row.dimensionValues?.[index]?.value || '';
+    });
+    metrics.forEach((name: string, index: number) => {
+      item[name] = numberValue(row.metricValues?.[index]?.value);
+    });
+    return item;
+  });
+}
+
+function delta(current: number, previous: number) {
+  if (previous === 0) return current === 0 ? 0 : null;
+  return Number((((current - previous) / previous) * 100).toFixed(1));
+}
+
+function buildInsights(
+  current: Record<string, number>,
+  previous: Record<string, number>,
+  sourceRows: Array<Record<string, string | number>>,
+  countryRows: Array<Record<string, string | number>>
+) {
+  const insights: string[] = [];
+  const sessionDelta = delta(current.sessions || 0, previous.sessions || 0);
+  const userDelta = delta(current.activeUsers || 0, previous.activeUsers || 0);
+  const keyDelta = delta(current.keyEvents || 0, previous.keyEvents || 0);
+
+  if (sessionDelta !== null) {
+    insights.push(
+      sessionDelta >= 0
+        ? `الجلسات ارتفعت ${Math.abs(sessionDelta)}% مقارنة بالفترة السابقة.`
+        : `الجلسات انخفضت ${Math.abs(sessionDelta)}% مقارنة بالفترة السابقة.`
+    );
+  }
+  if (userDelta !== null) {
+    insights.push(
+      userDelta >= 0
+        ? `المستخدمون النشطون ارتفعوا ${Math.abs(userDelta)}%.`
+        : `المستخدمون النشطون انخفضوا ${Math.abs(userDelta)}%.`
+    );
+  }
+  if (keyDelta !== null && (current.keyEvents || previous.keyEvents)) {
+    insights.push(
+      keyDelta >= 0
+        ? `الأحداث الرئيسية ارتفعت ${Math.abs(keyDelta)}%.`
+        : `الأحداث الرئيسية انخفضت ${Math.abs(keyDelta)}%.`
+    );
+  }
+
+  const topSource = sourceRows[0];
+  if (topSource?.sessionSourceMedium) {
+    insights.push(
+      `أعلى مصدر زيارات هو ${topSource.sessionSourceMedium} بعدد ${topSource.sessions || 0} جلسة.`
+    );
+  }
+
+  const topCountry = countryRows[0];
+  if (topCountry?.country) {
+    insights.push(
+      `أعلى دولة من حيث الجلسات هي ${topCountry.country} بعدد ${topCountry.sessions || 0} جلسة.`
+    );
+  }
+
+  return insights.slice(0, 5);
+}
+
 export async function GET(req: NextRequest) {
   try {
     await requireAdmin(req);
@@ -133,31 +234,169 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const requestedRange = new URL(req.url).searchParams.get('range');
+    const range: RangeKey = requestedRange === '7d' || requestedRange === '90d' ? requestedRange : '30d';
+    const config = rangeConfig(range);
     const accessToken = await getAccessToken(email, privateKey);
-    const report = await runReport(propertyId, accessToken);
 
-    const names = (report.metricHeaders || []).map((item: { name: string }) => item.name);
-    const values = report.rows?.[0]?.metricValues || [];
-    const metrics: Record<string, number> = {};
+    const baseMetrics = [
+      { name: 'activeUsers' },
+      { name: 'sessions' },
+      { name: 'screenPageViews' },
+      { name: 'engagedSessions' },
+      { name: 'engagementRate' },
+      { name: 'averageSessionDuration' },
+      { name: 'eventCount' },
+      { name: 'keyEvents' },
+    ];
 
-    names.forEach((name: string, index: number) => {
-      const raw = values[index]?.value ?? '0';
-      const parsed = Number(raw);
-      metrics[name] = Number.isFinite(parsed) ? parsed : 0;
-    });
+    const [
+      currentReport,
+      previousReport,
+      trendReport,
+      sourceReport,
+      locationReport,
+      deviceReport,
+      pageReport,
+      visitorReport,
+      hourReport,
+      funnelReport,
+    ] = await Promise.all([
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.current],
+        metrics: baseMetrics,
+      }),
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.previous],
+        metrics: baseMetrics,
+      }),
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.current],
+        dimensions: [{ name: 'date' }],
+        metrics: [
+          { name: 'sessions' },
+          { name: 'activeUsers' },
+          { name: 'screenPageViews' },
+          { name: 'keyEvents' },
+        ],
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+        limit: 100,
+      }),
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.current],
+        dimensions: [{ name: 'sessionSourceMedium' }],
+        metrics: [
+          { name: 'sessions' },
+          { name: 'activeUsers' },
+          { name: 'engagementRate' },
+          { name: 'keyEvents' },
+        ],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: 10,
+      }),
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.current],
+        dimensions: [{ name: 'country' }, { name: 'city' }],
+        metrics: [
+          { name: 'sessions' },
+          { name: 'activeUsers' },
+          { name: 'engagementRate' },
+          { name: 'keyEvents' },
+        ],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: 15,
+      }),
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.current],
+        dimensions: [{ name: 'deviceCategory' }],
+        metrics: [
+          { name: 'sessions' },
+          { name: 'activeUsers' },
+          { name: 'engagementRate' },
+        ],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: 10,
+      }),
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.current],
+        dimensions: [{ name: 'pageTitle' }, { name: 'pagePath' }],
+        metrics: [
+          { name: 'screenPageViews' },
+          { name: 'activeUsers' },
+          { name: 'engagementRate' },
+        ],
+        orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+        limit: 10,
+      }),
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.current],
+        dimensions: [{ name: 'newVsReturning' }],
+        metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
+        orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
+        limit: 10,
+      }),
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.current],
+        dimensions: [{ name: 'hour' }],
+        metrics: [{ name: 'sessions' }, { name: 'activeUsers' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: 24,
+      }),
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.current],
+        dimensions: [{ name: 'eventName' }],
+        metrics: [{ name: 'eventCount' }, { name: 'activeUsers' }],
+        dimensionFilter: {
+          filter: {
+            fieldName: 'eventName',
+            inListFilter: {
+              values: ['talent_form_start', 'talent_form_step', 'talent_application_submit'],
+            },
+          },
+        },
+        orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+        limit: 10,
+      }),
+    ]);
+
+    const current = metricMap(currentReport);
+    const previous = metricMap(previousReport);
+    const sourceRows = rows(sourceReport);
+    const locationRows = rows(locationReport);
+
+    const comparisons = Object.fromEntries(
+      Object.keys(current).map((key) => [
+        key,
+        {
+          current: current[key] || 0,
+          previous: previous[key] || 0,
+          changePercent: delta(current[key] || 0, previous[key] || 0),
+        },
+      ])
+    );
 
     return NextResponse.json({
       success: true,
-      period: { startDate: '30daysAgo', endDate: 'today' },
-      metrics: {
-        activeUsers: metrics.activeUsers || 0,
-        sessions: metrics.sessions || 0,
-        screenPageViews: metrics.screenPageViews || 0,
-        engagedSessions: metrics.engagedSessions || 0,
-        engagementRate: metrics.engagementRate || 0,
-        averageSessionDuration: metrics.averageSessionDuration || 0,
-        eventCount: metrics.eventCount || 0,
-        keyEvents: metrics.keyEvents || 0,
+      range,
+      rangeLabel: config.label,
+      period: config.current,
+      previousPeriod: config.previous,
+      metrics: current,
+      previousMetrics: previous,
+      comparisons,
+      trend: rows(trendReport),
+      acquisition: sourceRows,
+      locations: locationRows,
+      devices: rows(deviceReport),
+      pages: rows(pageReport),
+      visitors: rows(visitorReport),
+      peakHours: rows(hourReport),
+      funnel: rows(funnelReport),
+      executiveSummary: buildInsights(current, previous, sourceRows, locationRows),
+      health: {
+        dataApi: 'connected',
+        propertyIdConfigured: true,
+        serviceAccountConfigured: true,
       },
       generatedAt: new Date().toISOString(),
     });

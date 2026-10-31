@@ -113,6 +113,7 @@ export default function AdminAnalyticsPage() {
   const [range, setRange] = useState<RangeKey>('30d');
   const [customStartDate, setCustomStartDate] = useState(initialCustomDates.startDate);
   const [customEndDate, setCustomEndDate] = useState(initialCustomDates.endDate);
+  const [appliedCustomDates, setAppliedCustomDates] = useState(initialCustomDates);
   const [countryFilter, setCountryFilter] = useState('ALL');
   const [countryOptions, setCountryOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,8 +139,8 @@ export default function AdminAnalyticsPage() {
 
       const params = new URLSearchParams({ range: nextRange });
       if (nextRange === 'custom') {
-        params.set('startDate', customStartDate);
-        params.set('endDate', customEndDate);
+        params.set('startDate', appliedCustomDates.startDate);
+        params.set('endDate', appliedCustomDates.endDate);
       }
       if (countryFilter !== 'ALL') params.set('country', countryFilter);
 
@@ -162,7 +163,7 @@ export default function AdminAnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, [router, customStartDate, customEndDate, countryFilter]);
+  }, [router, appliedCustomDates, countryFilter]);
 
   useEffect(() => {
     load(range);
@@ -204,6 +205,23 @@ export default function AdminAnalyticsPage() {
     }
     return result.slice(0, 4);
   }, [summary]);
+
+  const applyCustomRange = () => {
+    if (!customStartDate || !customEndDate || customStartDate > customEndDate) {
+      setError('تحقق من تاريخ البداية والنهاية للفترة المخصصة.');
+      return;
+    }
+    setError('');
+    const nextDates = { startDate: customStartDate, endDate: customEndDate };
+    if (
+      nextDates.startDate === appliedCustomDates.startDate &&
+      nextDates.endDate === appliedCustomDates.endDate
+    ) {
+      load('custom');
+      return;
+    }
+    setAppliedCustomDates(nextDates);
+  };
 
   const exportCsv = () => {
     if (!summary) return;
@@ -317,7 +335,7 @@ export default function AdminAnalyticsPage() {
               />
             </label>
             <button
-              onClick={() => load('custom')}
+              onClick={applyCustomRange}
               className="px-3 py-2 cursor-pointer rounded-lg text-sm bg-afaq-teal/15 text-afaq-teal border border-afaq-teal/30 hover:bg-afaq-teal/20"
             >
               تطبيق الفترة

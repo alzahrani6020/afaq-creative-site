@@ -390,14 +390,18 @@ export default function AdminTalentDetailPage() {
             <div className="flex flex-wrap gap-2 mb-6">
               <button
                 onClick={handleCopyNumber}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 text-sm"
+                title="نسخ رقم الطلب"
+                aria-label="نسخ رقم الطلب"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 text-sm cursor-pointer"
               >
                 {copied ? <CheckCircle className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                 {copied ? 'تم النسخ' : 'نسخ رقم الطلب'}
               </button>
               <button
                 onClick={() => setIsEditing((v) => !v)}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-afaq-gold/10 border border-afaq-gold/20 text-afaq-gold hover:bg-afaq-gold/20 text-sm"
+                title={isEditing ? 'إلغاء تعديل البيانات' : 'تعديل بيانات الطلب'}
+                aria-label={isEditing ? 'إلغاء تعديل البيانات' : 'تعديل بيانات الطلب'}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-afaq-gold/10 border border-afaq-gold/20 text-afaq-gold hover:bg-afaq-gold/20 text-sm cursor-pointer"
               >
                 {isEditing ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
                 {isEditing ? 'إلغاء التعديل' : 'تعديل البيانات'}
@@ -421,7 +425,9 @@ export default function AdminTalentDetailPage() {
                         <div className="flex items-center gap-2 mt-2">
                           <a
                             href={`tel:${phoneNumber}`}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-white/70 hover:bg-white/10 text-xs"
+                            title="الاتصال بالمتقدم"
+                            aria-label="الاتصال بالمتقدم"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white/5 text-white/70 hover:bg-white/10 text-xs cursor-pointer"
                           >
                             <Phone className="w-3 h-3" /> اتصال
                           </a>
@@ -429,7 +435,9 @@ export default function AdminTalentDetailPage() {
                             href={`https://wa.me/${phoneDigits}?text=${encodeURIComponent(whatsappMessage)}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs"
+                            title="فتح محادثة واتساب"
+                            aria-label="فتح محادثة واتساب"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs cursor-pointer"
                           >
                             <MessageCircle className="w-3 h-3" /> واتساب
                           </a>
@@ -626,7 +634,9 @@ export default function AdminTalentDetailPage() {
                 <button
                   onClick={handleSaveEdit}
                   disabled={saving}
-                  className="w-full bg-afaq-teal hover:bg-afaq-blue2 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                  title="حفظ تعديلات بيانات الطلب"
+                  aria-label="حفظ تعديلات بيانات الطلب"
+                  className="w-full bg-afaq-teal cursor-pointer hover:bg-afaq-blue2 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-4 h-4" />}
                   حفظ التعديلات
@@ -781,7 +791,9 @@ export default function AdminTalentDetailPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full bg-afaq-teal hover:bg-afaq-blue2 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                title="حفظ حالة الطلب والملاحظات"
+                aria-label="حفظ حالة الطلب والملاحظات"
+                className="w-full bg-afaq-teal cursor-pointer hover:bg-afaq-blue2 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-4 h-4" />}
                 حفظ التغييرات
@@ -794,7 +806,9 @@ export default function AdminTalentDetailPage() {
             {!showDeleteConfirm ? (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+                title="حذف الطلب"
+                aria-label="حذف الطلب"
+                className="w-full flex items-center cursor-pointer justify-center gap-2 px-4 py-2.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
               >
                 <Trash2 className="w-4 h-4" /> حذف الطلب
               </button>
@@ -814,13 +828,17 @@ export default function AdminTalentDetailPage() {
                   <button
                     onClick={handleDelete}
                     disabled={saving || deleteConfirmText !== talent.applicationNumber}
-                    className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 py-2 rounded-lg text-sm font-semibold disabled:opacity-40"
+                    title="تأكيد حذف الطلب"
+                    aria-label="تأكيد حذف الطلب"
+                    className="flex-1 bg-red-500/20 cursor-pointer hover:bg-red-500/30 text-red-400 py-2 rounded-lg text-sm font-semibold disabled:opacity-40"
                   >
                     تأكيد الحذف
                   </button>
                   <button
                     onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
-                    className="flex-1 bg-white/5 hover:bg-white/10 text-white py-2 rounded-lg text-sm"
+                    title="إلغاء الحذف"
+                    aria-label="إلغاء الحذف"
+                    className="flex-1 bg-white/5 cursor-pointer hover:bg-white/10 text-white py-2 rounded-lg text-sm"
                   >
                     إلغاء
                   </button>
@@ -857,7 +875,9 @@ export default function AdminTalentDetailPage() {
               />
               <button
                 onClick={handleAddActivity}
-                className="w-full bg-white/10 hover:bg-white/20 text-white text-sm py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                title="إضافة نشاط إلى سجل الطلب"
+                aria-label="إضافة نشاط إلى سجل الطلب"
+                className="w-full bg-white/10 cursor-pointer hover:bg-white/20 text-white text-sm py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <CheckCircle className="w-4 h-4" />
                 إضافة
@@ -919,7 +939,9 @@ function AttachmentLink({ label, url }: { label: string; url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors"
+      title={`فتح ${label}`}
+      aria-label={`فتح ${label}`}
+      className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer"
     >
       <span className="text-white/80 text-sm">{label}</span>
       <ExternalLink className="w-4 h-4 text-afaq-teal" />

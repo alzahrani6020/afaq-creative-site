@@ -347,6 +347,7 @@ export async function GET(req: NextRequest) {
       }),
       runReport(propertyId, accessToken, {
         dateRanges: [config.previous],
+        ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
         metrics: baseMetrics,
       }),
       runReport(propertyId, accessToken, {

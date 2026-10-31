@@ -20,6 +20,7 @@ import { serviceAreas } from '@/lib/catalog/serviceAreas';
 import { workPlaces } from '@/lib/catalog/workPlaces';
 import { countries, getRegion, countryDialCodes } from '@/lib/catalog/locations';
 import { CountrySearch } from './CountrySearch';
+import { trackEvent } from '@/lib/analytics';
 
 function normalizePhone(phone: string): string {
   return phone.replace(/[\s\-\(\)\.]/g, '').replace(/^\+/, '');
@@ -448,6 +449,11 @@ export function TalentHub() {
 
   const handleNext = () => {
     if (!validateStep()) return;
+    trackEvent('talent_form_step', {
+      flow_mode: flowMode,
+      step_number: step,
+      step_group: step <= 4 ? 'skill' : step <= 6 ? 'location' : step <= 8 ? 'contact' : 'submit',
+    });
     setErrors({});
 
     if (step === 3) {
@@ -625,6 +631,11 @@ export function TalentHub() {
       const json = await res.json();
 
       if (res.ok && json.success) {
+        trackEvent('talent_application_submit', {
+          flow_mode: flowMode,
+          category: primary.profileType || 'unknown',
+          country: locationOverride.country || 'unknown',
+        });
         setResult({ success: true, message: json.message, applicationNumber: json.applicationNumber });
       } else {
         setResult({ success: false, message: json.message || 'تعذر حفظ البيانات' });
@@ -670,12 +681,14 @@ export function TalentHub() {
     arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
 
   const startFullFlow = () => {
+    trackEvent('talent_form_start', { flow_mode: 'full' });
     setFlowMode('full');
     setStep(1);
     setErrors({});
   };
 
   const startQuickFlow = () => {
+    trackEvent('talent_form_start', { flow_mode: 'quick' });
     setFlowMode('quick');
     setQuickStep(1);
     setErrors({});

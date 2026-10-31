@@ -9,7 +9,21 @@ const createPrismaClient = () => {
   if (!connectionString) {
     throw new Error('DATABASE_URL is not defined');
   }
-  const pool = new pg.Pool({ connectionString });
+
+  const normalizedConnectionString = (() => {
+    try {
+      const url = new URL(connectionString);
+      const sslmode = url.searchParams.get('sslmode');
+      if (sslmode && ['require', 'prefer', 'verify-ca'].includes(sslmode)) {
+        url.searchParams.set('sslmode', 'verify-full');
+      }
+      return url.toString();
+    } catch {
+      return connectionString;
+    }
+  })();
+
+  const pool = new pg.Pool({ connectionString: normalizedConnectionString });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,

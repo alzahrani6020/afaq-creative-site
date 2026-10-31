@@ -260,6 +260,7 @@ export async function GET(req: NextRequest) {
       pageReport,
       visitorReport,
       hourReport,
+      funnelReport,
     ] = await Promise.all([
       runReport(propertyId, accessToken, {
         dateRanges: [config.current],
@@ -341,6 +342,21 @@ export async function GET(req: NextRequest) {
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
         limit: 24,
       }),
+      runReport(propertyId, accessToken, {
+        dateRanges: [config.current],
+        dimensions: [{ name: 'eventName' }],
+        metrics: [{ name: 'eventCount' }, { name: 'activeUsers' }],
+        dimensionFilter: {
+          filter: {
+            fieldName: 'eventName',
+            inListFilter: {
+              values: ['talent_form_start', 'talent_form_step', 'talent_application_submit'],
+            },
+          },
+        },
+        orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+        limit: 10,
+      }),
     ]);
 
     const current = metricMap(currentReport);
@@ -375,6 +391,7 @@ export async function GET(req: NextRequest) {
       pages: rows(pageReport),
       visitors: rows(visitorReport),
       peakHours: rows(hourReport),
+      funnel: rows(funnelReport),
       executiveSummary: buildInsights(current, previous, sourceRows, locationRows),
       health: {
         dataApi: 'connected',

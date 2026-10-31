@@ -30,7 +30,7 @@ export function AdminHeader({ admin }: AdminHeaderProps) {
       : 'text-white/70 hover:text-white';
 
   return (
-    <header className="bg-afaq-bg border-b border-white/10">
+    <header className="sticky top-0 z-50 bg-afaq-bg/95 backdrop-blur border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-3 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-5">
           <Link

@@ -20,7 +20,7 @@ import {
   Users,
 } from 'lucide-react';
 
-type RangeKey = '7d' | '30d' | '90d';
+type RangeKey = 'today' | '7d' | '30d' | '90d' | 'custom';
 type Row = Record<string, string | number>;
 type Comparison = { current: number; previous: number; changePercent: number | null };
 
@@ -38,6 +38,7 @@ type StatusData = {
 type SummaryData = {
   range: RangeKey;
   rangeLabel: string;
+  countryFilter: string | null;
   period: { startDate: string; endDate: string };
   metrics: Record<string, number>;
   previousMetrics: Record<string, number>;
@@ -90,14 +91,32 @@ function maxOf(rows: Row[], key: string) {
   return Math.max(1, ...rows.map((row) => Number(row[key] || 0)));
 }
 
+function localIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function defaultCustomDates() {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - 29);
+  return { startDate: localIsoDate(start), endDate: localIsoDate(end) };
+}
+
 export default function AdminAnalyticsPage() {
   const router = useRouter();
   const [status, setStatus] = useState<StatusData | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
+  const initialCustomDates = useMemo(() => defaultCustomDates(), []);
   const [range, setRange] = useState<RangeKey>('30d');
+  const [customStartDate, setCustomStartDate] = useState(initialCustomDates.startDate);
+  const [customEndDate, setCustomEndDate] = useState(initialCustomDates.endDate);
+  const [countryFilter, setCountryFilter] = useState('ALL');
+  const [countryOptions, setCountryOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [countryView, setCountryView] = useState('ALL');
 
   const load = useCallback(async (nextRange: RangeKey) => {
     setLoading(true);
@@ -117,24 +136,37 @@ export default function AdminAnalyticsPage() {
         return;
       }
 
-      const summaryRes = await fetch(`/api/admin/analytics/summary?range=${nextRange}`, { cache: 'no-store' });
+      const params = new URLSearchParams({ range: nextRange });
+      if (nextRange === 'custom') {
+        params.set('startDate', customStartDate);
+        params.set('endDate', customEndDate);
+      }
+      if (countryFilter !== 'ALL') params.set('country', countryFilter);
+
+      const summaryRes = await fetch(`/api/admin/analytics/summary?${params.toString()}`, { cache: 'no-store' });
       const summaryBody = await summaryRes.json();
       if (summaryRes.status === 401) {
         router.push('/admin/login');
         return;
       }
       if (!summaryRes.ok || !summaryBody.success) throw new Error(summaryBody.message || 'تعذر تحميل بيانات GA4');
-      setSummary(summaryBody as SummaryData);
+      const nextSummary = summaryBody as SummaryData;
+      setSummary(nextSummary);
+      if (countryFilter === 'ALL') {
+        setCountryOptions(
+          Array.from(new Set(nextSummary.locations.map((row) => String(row.country || '')).filter(Boolean))).sort()
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر تحميل التحليلات');
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, customStartDate, customEndDate, countryFilter]);
 
   useEffect(() => {
     load(range);
-  }, [load, range]);
+  }, [load, range, countryFilter]);
 
   const cards = useMemo(() => {
     if (!summary) return [];
@@ -173,17 +205,6 @@ export default function AdminAnalyticsPage() {
     return result.slice(0, 4);
   }, [summary]);
 
-  const countries = useMemo(() => {
-    if (!summary) return [];
-    return Array.from(new Set(summary.locations.map((row) => String(row.country || '')).filter(Boolean))).sort();
-  }, [summary]);
-
-  const visibleLocations = useMemo(() => {
-    if (!summary) return [];
-    if (countryView === 'ALL') return summary.locations;
-    return summary.locations.filter((row) => String(row.country || '') === countryView);
-  }, [summary, countryView]);
-
   const exportCsv = () => {
     if (!summary) return;
     const lines = [
@@ -220,7 +241,7 @@ export default function AdminAnalyticsPage() {
           <p className="text-white/50 text-sm mt-1">لوحة قرار تجمع مؤشرات GA4 والاتجاهات والاكتساب والجغرافيا والأجهزة والمحتوى.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {(['7d', '30d', '90d'] as RangeKey[]).map((item) => (
+          {(['today', '7d', '30d', '90d', 'custom'] as RangeKey[]).map((item) => (
             <button
               key={item}
               onClick={() => setRange(item)}
@@ -230,7 +251,15 @@ export default function AdminAnalyticsPage() {
                   : 'bg-white/5 text-white/60 border-white/10 hover:text-white'
               }`}
             >
-              {item === '7d' ? '7 أيام' : item === '30d' ? '30 يومًا' : '90 يومًا'}
+              {item === 'today'
+                ? 'اليوم'
+                : item === '7d'
+                  ? '7 أيام'
+                  : item === '30d'
+                    ? '30 يومًا'
+                    : item === '90d'
+                      ? '90 يومًا'
+                      : 'فترة مخصصة'}
             </button>
           ))}
           <button
@@ -262,6 +291,53 @@ export default function AdminAnalyticsPage() {
             طباعة
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-col xl:flex-row xl:items-end gap-3 bg-white/5 border border-white/10 rounded-xl p-4">
+        {range === 'custom' && (
+          <>
+            <label className="flex flex-col gap-1 text-xs text-white/50">
+              من
+              <input
+                type="date"
+                value={customStartDate}
+                max={customEndDate}
+                onChange={(event) => setCustomStartDate(event.target.value)}
+                className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white/80"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-white/50">
+              إلى
+              <input
+                type="date"
+                value={customEndDate}
+                min={customStartDate}
+                onChange={(event) => setCustomEndDate(event.target.value)}
+                className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white/80"
+              />
+            </label>
+            <button
+              onClick={() => load('custom')}
+              className="px-3 py-2 cursor-pointer rounded-lg text-sm bg-afaq-teal/15 text-afaq-teal border border-afaq-teal/30 hover:bg-afaq-teal/20"
+            >
+              تطبيق الفترة
+            </button>
+          </>
+        )}
+        <label className="flex flex-col gap-1 text-xs text-white/50 xl:mr-auto">
+          فلترة GA4 حسب الدولة
+          <select
+            value={countryFilter}
+            onChange={(event) => setCountryFilter(event.target.value)}
+            className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white/80 min-w-48"
+          >
+            <option value="ALL">كل الدول</option>
+            {countryOptions.map((country) => <option key={country} value={country}>{country}</option>)}
+          </select>
+        </label>
+        {summary?.countryFilter && (
+          <span className="text-xs text-afaq-teal">الفلتر الفعلي: {summary.countryFilter}</span>
+        )}
       </div>
 
       {error && (
@@ -379,17 +455,12 @@ export default function AdminAnalyticsPage() {
                   <Globe2 className="w-5 h-5 text-afaq-teal" aria-hidden="true" />
                   <h2 className="text-white font-semibold">الدول والمدن</h2>
                 </div>
-                <select
-                  value={countryView}
-                  onChange={(event) => setCountryView(event.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs"
-                >
-                  <option value="ALL">كل الدول</option>
-                  {countries.map((country) => <option key={country} value={country}>{country}</option>)}
-                </select>
+                <span className="text-white/40 text-xs">
+                  {countryFilter === 'ALL' ? 'كل الدول' : `فلتر GA4: ${countryFilter}`}
+                </span>
               </div>
               <div className="space-y-3">
-                {visibleLocations.length ? visibleLocations.slice(0, 10).map((row, index) => (
+                {summary.locations.length ? summary.locations.slice(0, 10).map((row, index) => (
                   <div key={`${row.country}-${row.city}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 border-b border-white/5 pb-3 last:border-0">
                     <div>
                       <p className="text-white/80 text-sm">{String(row.country || 'غير محدد')} — {String(row.city || 'غير محدد')}</p>

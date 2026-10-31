@@ -47,6 +47,7 @@ type SummaryData = {
   pages: Row[];
   visitors: Row[];
   peakHours: Row[];
+  funnel: Row[];
   executiveSummary: string[];
   health: {
     dataApi: string;
@@ -337,6 +338,33 @@ export default function AdminAnalyticsPage() {
               </div>
             </section>
           </div>
+
+          <section className="bg-white/5 border border-white/10 rounded-xl p-5">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h2 className="text-white font-semibold">مسار تحويل طلبات المواهب</h2>
+              <span className="text-white/40 text-xs">يبدأ القياس من هذا الإصدار؛ البيانات التاريخية السابقة لن تُعاد بناؤها</span>
+            </div>
+            {summary.funnel.length ? (
+              <div className="grid md:grid-cols-3 gap-4">
+                {[
+                  ['talent_form_start', 'بدأ النموذج'],
+                  ['talent_form_step', 'تقدم داخل النموذج'],
+                  ['talent_application_submit', 'إرسال ناجح'],
+                ].map(([eventName, label]) => {
+                  const row = summary.funnel.find((item) => String(item.eventName) === eventName);
+                  return (
+                    <div key={eventName} className="bg-black/10 rounded-xl p-4">
+                      <p className="text-white/50 text-xs">{label}</p>
+                      <p className="text-white text-2xl font-bold mt-2">{formatNumber(Number(row?.eventCount || 0))}</p>
+                      <p className="text-white/40 text-xs mt-2">{formatNumber(Number(row?.activeUsers || 0))} مستخدم</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-white/40 text-sm">لم تُسجل أحداث Funnel بعد. سيبدأ ظهورها بعد أول استخدام للنموذج عقب نشر هذا الإصدار.</p>
+            )}
+          </section>
 
           <section className="bg-white/5 border border-white/10 rounded-xl p-5">
             <h2 className="text-white font-semibold mb-4">أكثر الصفحات مشاهدة</h2>

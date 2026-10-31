@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
         configured: propertyConfigured && serviceAccountConfigured,
         propertyConfigured,
         serviceAccountConfigured,
-        status: propertyConfigured && serviceAccountConfigured ? 'ready' : 'not_configured',
+        status: propertyConfigured && serviceAccountConfigured ? 'configured' : 'not_configured',
       },
       generatedAt: new Date().toISOString(),
     });

@@ -8,9 +8,11 @@ import {
   CheckCircle2,
   Clock3,
   Database,
+  Download,
   Globe2,
   Loader2,
   MonitorSmartphone,
+  Printer,
   RefreshCw,
   ShieldCheck,
   TrendingDown,
@@ -95,6 +97,7 @@ export default function AdminAnalyticsPage() {
   const [range, setRange] = useState<RangeKey>('30d');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [countryView, setCountryView] = useState('ALL');
 
   const load = useCallback(async (nextRange: RangeKey) => {
     setLoading(true);
@@ -149,6 +152,62 @@ export default function AdminAnalyticsPage() {
     ] as Array<[string, string, Comparison | undefined]>;
   }, [summary]);
 
+  const alerts = useMemo(() => {
+    if (!summary) return [];
+    const result: Array<{ level: 'warning' | 'info'; text: string }> = [];
+    const sessions = summary.comparisons.sessions?.changePercent;
+    const users = summary.comparisons.activeUsers?.changePercent;
+    const keyEvents = summary.metrics.keyEvents || 0;
+    if (sessions !== null && sessions !== undefined && sessions <= -25) {
+      result.push({ level: 'warning', text: `انخفاض الجلسات ${Math.abs(sessions)}% مقارنة بالفترة السابقة.` });
+    }
+    if (users !== null && users !== undefined && users <= -25) {
+      result.push({ level: 'warning', text: `انخفاض المستخدمين النشطين ${Math.abs(users)}% مقارنة بالفترة السابقة.` });
+    }
+    if ((summary.metrics.sessions || 0) > 0 && keyEvents === 0) {
+      result.push({ level: 'info', text: 'توجد زيارات، لكن لا توجد أحداث رئيسية مسجلة في الفترة الحالية.' });
+    }
+    if (!summary.funnel.length) {
+      result.push({ level: 'info', text: 'بيانات Funnel ستبدأ بالظهور بعد استخدام نموذج المواهب على الإصدار الحالي.' });
+    }
+    return result.slice(0, 4);
+  }, [summary]);
+
+  const countries = useMemo(() => {
+    if (!summary) return [];
+    return Array.from(new Set(summary.locations.map((row) => String(row.country || '')).filter(Boolean))).sort();
+  }, [summary]);
+
+  const visibleLocations = useMemo(() => {
+    if (!summary) return [];
+    if (countryView === 'ALL') return summary.locations;
+    return summary.locations.filter((row) => String(row.country || '') === countryView);
+  }, [summary, countryView]);
+
+  const exportCsv = () => {
+    if (!summary) return;
+    const lines = [
+      ['القسم', 'البند', 'القيمة 1', 'القيمة 2', 'القيمة 3'],
+      ...Object.entries(summary.metrics).map(([key, value]) => ['KPI', key, String(value), '', '']),
+      ...summary.acquisition.map((row) => ['مصادر الزيارات', String(row.sessionSourceMedium || ''), String(row.sessions || 0), String(row.activeUsers || 0), String(row.engagementRate || 0)]),
+      ...summary.locations.map((row) => ['الجغرافيا', String(row.country || ''), String(row.city || ''), String(row.sessions || 0), String(row.activeUsers || 0)]),
+      ...summary.pages.map((row) => ['الصفحات', String(row.pageTitle || ''), String(row.pagePath || ''), String(row.screenPageViews || 0), String(row.activeUsers || 0)]),
+    ];
+    const csv = '\uFEFF' + lines.map((row) => row.map((cell) => {
+      const safe = String(cell ?? '').replace(/"/g, '""');
+      return `"${safe}"`;
+    }).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `afaq-analytics-${summary.range}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
   if (!status && loading) {
     return <div className="flex items-center justify-center py-24"><Loader2 className="w-8 h-8 text-afaq-teal animate-spin" /></div>;
   }
@@ -181,6 +240,21 @@ export default function AdminAnalyticsPage() {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             تحديث
           </button>
+          <button
+            onClick={exportCsv}
+            disabled={!summary}
+            className="px-3 py-2 rounded-lg text-sm bg-white/5 text-white/70 border border-white/10 hover:text-white inline-flex items-center gap-2 disabled:opacity-40"
+          >
+            <Download className="w-4 h-4" />
+            CSV
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="px-3 py-2 rounded-lg text-sm bg-white/5 text-white/70 border border-white/10 hover:text-white inline-flex items-center gap-2"
+          >
+            <Printer className="w-4 h-4" />
+            طباعة
+          </button>
         </div>
       </div>
 
@@ -205,6 +279,26 @@ export default function AdminAnalyticsPage() {
               )}
             </div>
           </section>
+
+          {alerts.length > 0 && (
+            <section className="grid md:grid-cols-2 gap-3">
+              {alerts.map((alert) => (
+                <div
+                  key={alert.text}
+                  className={`rounded-xl border p-4 text-sm ${
+                    alert.level === 'warning'
+                      ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-100'
+                      : 'bg-blue-500/10 border-blue-500/20 text-blue-100'
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{alert.text}</span>
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
 
           <section>
             <div className="flex items-center justify-between gap-3 mb-3">
@@ -274,12 +368,22 @@ export default function AdminAnalyticsPage() {
             </section>
 
             <section className="bg-white/5 border border-white/10 rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Globe2 className="w-5 h-5 text-afaq-teal" />
-                <h2 className="text-white font-semibold">الدول والمدن</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Globe2 className="w-5 h-5 text-afaq-teal" />
+                  <h2 className="text-white font-semibold">الدول والمدن</h2>
+                </div>
+                <select
+                  value={countryView}
+                  onChange={(event) => setCountryView(event.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white/70 text-xs"
+                >
+                  <option value="ALL">كل الدول</option>
+                  {countries.map((country) => <option key={country} value={country}>{country}</option>)}
+                </select>
               </div>
               <div className="space-y-3">
-                {summary.locations.length ? summary.locations.slice(0, 10).map((row, index) => (
+                {visibleLocations.length ? visibleLocations.slice(0, 10).map((row, index) => (
                   <div key={`${row.country}-${row.city}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 border-b border-white/5 pb-3 last:border-0">
                     <div>
                       <p className="text-white/80 text-sm">{String(row.country || 'غير محدد')} — {String(row.city || 'غير محدد')}</p>
@@ -287,7 +391,7 @@ export default function AdminAnalyticsPage() {
                     </div>
                     <span className="text-white font-semibold">{formatNumber(Number(row.sessions || 0))}</span>
                   </div>
-                )) : <p className="text-white/40 text-sm">لا توجد بيانات جغرافية بعد.</p>}
+                )) : <p className="text-white/40 text-sm">لا توجد بيانات جغرافية مطابقة.</p>}
               </div>
             </section>
           </div>
@@ -407,8 +511,9 @@ export default function AdminAnalyticsPage() {
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
               <Database className="w-5 h-5 text-afaq-gold mb-2" />
-              <p className="text-white/50 text-xs">آخر تحديث</p>
-              <p className="text-white font-semibold mt-1" dir="ltr">{new Date(summary.generatedAt).toLocaleString('ar-SA')}</p>
+              <p className="text-white/50 text-xs">حداثة البيانات</p>
+              <p className="text-white font-semibold mt-1">محدّثة عند الطلب</p>
+              <p className="text-white/40 text-xs mt-1" dir="ltr">{new Date(summary.generatedAt).toLocaleString('ar-SA')}</p>
             </div>
           </section>
         </>

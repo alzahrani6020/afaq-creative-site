@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     await requireAdmin(req);
 
-    const [adminActivities, talentActivities] = await Promise.all([
+    const [adminResult, talentResult] = await Promise.allSettled([
       prisma.adminActivity.findMany({
         orderBy: { createdAt: 'desc' },
         take: 100,
@@ -23,6 +23,17 @@ export async function GET(req: NextRequest) {
         },
       }),
     ]);
+
+    const adminActivities = adminResult.status === 'fulfilled' ? adminResult.value : [];
+    const talentActivities = talentResult.status === 'fulfilled' ? talentResult.value : [];
+    const degraded = adminResult.status === 'rejected' || talentResult.status === 'rejected';
+
+    if (adminResult.status === 'rejected') {
+      console.error('Admin audit source unavailable:', adminResult.reason);
+    }
+    if (talentResult.status === 'rejected') {
+      console.error('Talent audit source unavailable:', talentResult.reason);
+    }
 
     const events = [
       ...adminActivities.map((item) => ({
@@ -50,6 +61,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       events,
+      health: degraded ? 'degraded' : 'healthy',
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {

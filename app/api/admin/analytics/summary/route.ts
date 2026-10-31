@@ -4,12 +4,39 @@ import { createSign } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, UnauthorizedError } from '@/lib/admin-auth';
 
+class GoogleApiError extends Error {
+  stage: 'oauth' | 'ga4';
+  httpStatus: number;
+  googleStatus?: string;
+  googleCode?: number;
+
+  constructor(args: {
+    stage: 'oauth' | 'ga4';
+    httpStatus: number;
+    message: string;
+    googleStatus?: string;
+    googleCode?: number;
+  }) {
+    super(args.message);
+    this.name = 'GoogleApiError';
+    this.stage = args.stage;
+    this.httpStatus = args.httpStatus;
+    this.googleStatus = args.googleStatus;
+    this.googleCode = args.googleCode;
+  }
+}
+
 function base64Url(input: string) {
   return Buffer.from(input).toString('base64url');
 }
 
 function normalizePrivateKey(value: string) {
   return value.replace(/\\n/g, '\n');
+}
+
+function safeGoogleMessage(value: unknown, fallback: string) {
+  if (typeof value !== 'string') return fallback;
+  return value.replace(/[\r\n\t]+/g, ' ').slice(0, 500);
 }
 
 async function getAccessToken(email: string, privateKey: string) {
@@ -34,15 +61,20 @@ async function getAccessToken(email: string, privateKey: string) {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      grant_type: 'urn:ietf:params:oauth-grant-type:jwt-bearer'.replace('oauth-grant-type', 'oauth:grant-type'),
       assertion,
     }),
     cache: 'no-store',
   });
 
-  const tokenJson = await tokenResponse.json();
+  const tokenJson = await tokenResponse.json().catch(() => ({}));
   if (!tokenResponse.ok || !tokenJson.access_token) {
-    throw new Error('GOOGLE_AUTH_FAILED');
+    throw new GoogleApiError({
+      stage: 'oauth',
+      httpStatus: tokenResponse.status,
+      googleStatus: typeof tokenJson?.error === 'string' ? tokenJson.error : undefined,
+      message: safeGoogleMessage(tokenJson?.error_description, 'Google OAuth token request failed.'),
+    });
   }
   return tokenJson.access_token as string;
 }
@@ -73,10 +105,15 @@ async function runReport(propertyId: string, accessToken: string) {
     }
   );
 
-  const json = await response.json();
+  const json = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const code = json?.error?.status || json?.error?.code || 'GA4_REPORT_FAILED';
-    throw new Error(String(code));
+    throw new GoogleApiError({
+      stage: 'ga4',
+      httpStatus: response.status,
+      googleStatus: typeof json?.error?.status === 'string' ? json.error.status : undefined,
+      googleCode: typeof json?.error?.code === 'number' ? json.error.code : undefined,
+      message: safeGoogleMessage(json?.error?.message, 'Google Analytics Data API request failed.'),
+    });
   }
   return json;
 }
@@ -129,11 +166,37 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'غير مصرح' }, { status: 401 });
     }
 
-    const code = error instanceof Error ? error.message : 'GA4_REPORT_FAILED';
-    const status = code === 'PERMISSION_DENIED' ? 403 : 502;
+    if (error instanceof GoogleApiError) {
+      const diagnostic = {
+        stage: error.stage,
+        httpStatus: error.httpStatus,
+        googleStatus: error.googleStatus || null,
+        googleCode: error.googleCode || null,
+        message: error.message,
+      };
+
+      console.error('GA4_DATA_API_ERROR', diagnostic);
+
+      const status = error.httpStatus === 403 ? 403 : error.httpStatus === 400 ? 400 : 502;
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'GA4_DATA_API_ERROR',
+          diagnostic,
+          message: `تعذر قراءة بيانات Google Analytics: ${error.message}`,
+        },
+        { status }
+      );
+    }
+
+    console.error('GA4_DATA_API_ERROR', {
+      stage: 'unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+
     return NextResponse.json(
-      { success: false, code, message: 'تعذر قراءة بيانات Google Analytics.' },
-      { status }
+      { success: false, code: 'GA4_REPORT_FAILED', message: 'تعذر قراءة بيانات Google Analytics.' },
+      { status: 502 }
     );
   }
 }

@@ -40,20 +40,24 @@ export function AdminHeader({ admin }: AdminHeaderProps) {
             أفاق إدارية
           </Link>
 
-          <nav className="flex flex-wrap items-center gap-4 text-sm">
-            <Link href="/admin/dashboard" className={`inline-flex items-center gap-1.5 ${navClass('/admin/dashboard')}`}>
+          <nav className="flex flex-wrap items-center gap-4 text-sm" aria-label="التنقل الإداري">
+            <Link href="/admin/dashboard" title="الانتقال إلى الرئيسية"
+              className={`inline-flex items-center gap-1.5 cursor-pointer ${navClass('/admin/dashboard')}`}>
               <LayoutDashboard className="w-4 h-4" />
               الرئيسية
             </Link>
-            <Link href="/admin/talents" className={`inline-flex items-center gap-1.5 ${navClass('/admin/talents')}`}>
+            <Link href="/admin/talents" title="فتح إدارة المواهب"
+              className={`inline-flex items-center gap-1.5 cursor-pointer ${navClass('/admin/talents')}`}>
               <Users className="w-4 h-4" />
               المواهب
             </Link>
-            <Link href="/admin/analytics" className={`inline-flex items-center gap-1.5 ${navClass('/admin/analytics')}`}>
+            <Link href="/admin/analytics" title="فتح التحليلات"
+              className={`inline-flex items-center gap-1.5 cursor-pointer ${navClass('/admin/analytics')}`}>
               <BarChart3 className="w-4 h-4" />
               التحليلات
             </Link>
-            <Link href="/admin/audit" className={`inline-flex items-center gap-1.5 ${navClass('/admin/audit')}`}>
+            <Link href="/admin/audit" title="فتح سجل التدقيق"
+              className={`inline-flex items-center gap-1.5 cursor-pointer ${navClass('/admin/audit')}`}>
               <FileClock className="w-4 h-4" />
               سجل التدقيق
             </Link>
@@ -64,11 +68,12 @@ export function AdminHeader({ admin }: AdminHeaderProps) {
           <Link
             href="/admin/account"
             title="إعدادات الحساب"
-            className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-afaq-teal hover:border-afaq-teal/30 transition-colors"
+            aria-label="إعدادات الحساب"
+            className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-afaq-teal hover:border-afaq-teal/30 transition-colors cursor-pointer"
           >
             <Settings className="w-4 h-4" />
           </Link>
-          <div className="w-8 h-8 rounded-lg bg-afaq-teal/20 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-afaq-teal/20 flex items-center justify-center" aria-hidden="true">
             <User className="w-5 h-5 text-afaq-teal" />
           </div>
           <div className="hidden md:block">
@@ -77,7 +82,9 @@ export function AdminHeader({ admin }: AdminHeaderProps) {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 text-white/70 hover:text-white text-sm transition-colors"
+            title="تسجيل الخروج"
+            aria-label="تسجيل الخروج"
+            className="flex items-center gap-2 text-white/70 hover:text-white text-sm transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             تسجيل الخروج

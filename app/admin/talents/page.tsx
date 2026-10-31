@@ -166,6 +166,8 @@ export default function AdminTalentsPage() {
         </div>
         <button
           onClick={handleExport}
+          title="تصدير الطلبات بصيغة CSV"
+          aria-label="تصدير الطلبات بصيغة CSV"
           className="inline-flex items-center gap-2 bg-afaq-teal/10 hover:bg-afaq-teal/20 text-afaq-teal border border-afaq-teal/20 px-4 py-2 rounded-lg text-sm transition-colors"
         >
           <FileDown className="w-4 h-4" />
@@ -288,6 +290,8 @@ export default function AdminTalentsPage() {
                     <td className="px-4 py-3">
                       <Link
                         href={`/admin/talents/${talent.id}`}
+                        title={`عرض الطلب ${talent.applicationNumber}`}
+                        aria-label={`عرض الطلب ${talent.applicationNumber}`}
                         className="inline-flex items-center gap-1 text-afaq-teal hover:text-afaq-blue2 text-sm transition-colors"
                       >
                         <Eye className="w-4 h-4" />
@@ -310,14 +314,18 @@ export default function AdminTalentsPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="p-2 rounded-lg border border-white/10 text-white/70 hover:bg-white/5 disabled:opacity-40"
+                title="الصفحة السابقة"
+                aria-label="الصفحة السابقة"
+                className="p-2 cursor-pointer rounded-lg border border-white/10 text-white/70 hover:bg-white/5 disabled:opacity-40"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                 disabled={page >= pagination.totalPages}
-                className="p-2 rounded-lg border border-white/10 text-white/70 hover:bg-white/5 disabled:opacity-40"
+                title="الصفحة التالية"
+                aria-label="الصفحة التالية"
+                className="p-2 cursor-pointer rounded-lg border border-white/10 text-white/70 hover:bg-white/5 disabled:opacity-40"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>

@@ -224,7 +224,7 @@ export default function AdminAnalyticsPage() {
             <button
               key={item}
               onClick={() => setRange(item)}
-              className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+              className={`px-3 py-2 rounded-lg text-sm border transition-colors cursor-pointer ${
                 range === item
                   ? 'bg-afaq-teal/15 text-afaq-teal border-afaq-teal/30'
                   : 'bg-white/5 text-white/60 border-white/10 hover:text-white'
@@ -235,7 +235,9 @@ export default function AdminAnalyticsPage() {
           ))}
           <button
             onClick={() => load(range)}
-            className="px-3 py-2 rounded-lg text-sm bg-white/5 text-white/70 border border-white/10 hover:text-white inline-flex items-center gap-2"
+            title="تحديث بيانات التحليلات"
+            aria-label="تحديث بيانات التحليلات"
+            className="px-3 py-2 cursor-pointer rounded-lg text-sm bg-white/5 text-white/70 border border-white/10 hover:text-white inline-flex items-center gap-2"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             تحديث
@@ -243,14 +245,18 @@ export default function AdminAnalyticsPage() {
           <button
             onClick={exportCsv}
             disabled={!summary}
-            className="px-3 py-2 rounded-lg text-sm bg-white/5 text-white/70 border border-white/10 hover:text-white inline-flex items-center gap-2 disabled:opacity-40"
+            title="تصدير بيانات التحليلات بصيغة CSV"
+            aria-label="تصدير CSV"
+            className="px-3 py-2 cursor-pointer rounded-lg text-sm bg-white/5 text-white/70 border border-white/10 hover:text-white inline-flex items-center gap-2 disabled:opacity-40"
           >
             <Download className="w-4 h-4" />
             CSV
           </button>
           <button
             onClick={() => window.print()}
-            className="px-3 py-2 rounded-lg text-sm bg-white/5 text-white/70 border border-white/10 hover:text-white inline-flex items-center gap-2"
+            title="طباعة التقرير أو حفظه PDF"
+            aria-label="طباعة التقرير"
+            className="px-3 py-2 cursor-pointer rounded-lg text-sm bg-white/5 text-white/70 border border-white/10 hover:text-white inline-flex items-center gap-2"
           >
             <Printer className="w-4 h-4" />
             طباعة
@@ -268,7 +274,7 @@ export default function AdminAnalyticsPage() {
         <>
           <section className="bg-gradient-to-br from-afaq-teal/10 to-white/5 border border-afaq-teal/20 rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-4">
-              <Activity className="w-5 h-5 text-afaq-teal" />
+              <Activity className="w-5 h-5 text-afaq-teal" aria-hidden="true" />
               <h2 className="text-white font-semibold">الملخص التنفيذي — {summary.rangeLabel}</h2>
             </div>
             <div className="grid md:grid-cols-2 gap-3">
@@ -370,7 +376,7 @@ export default function AdminAnalyticsPage() {
             <section className="bg-white/5 border border-white/10 rounded-xl p-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
-                  <Globe2 className="w-5 h-5 text-afaq-teal" />
+                  <Globe2 className="w-5 h-5 text-afaq-teal" aria-hidden="true" />
                   <h2 className="text-white font-semibold">الدول والمدن</h2>
                 </div>
                 <select
@@ -399,7 +405,7 @@ export default function AdminAnalyticsPage() {
           <div className="grid lg:grid-cols-3 gap-6">
             <section className="bg-white/5 border border-white/10 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-4">
-                <MonitorSmartphone className="w-5 h-5 text-afaq-gold" />
+                <MonitorSmartphone className="w-5 h-5 text-afaq-gold" aria-hidden="true" />
                 <h2 className="text-white font-semibold">الأجهزة</h2>
               </div>
               <div className="space-y-3">
@@ -414,7 +420,7 @@ export default function AdminAnalyticsPage() {
 
             <section className="bg-white/5 border border-white/10 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-4">
-                <Users className="w-5 h-5 text-afaq-teal" />
+                <Users className="w-5 h-5 text-afaq-teal" aria-hidden="true" />
                 <h2 className="text-white font-semibold">جدد مقابل عائدين</h2>
               </div>
               <div className="space-y-3">
@@ -429,7 +435,7 @@ export default function AdminAnalyticsPage() {
 
             <section className="bg-white/5 border border-white/10 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-4">
-                <Clock3 className="w-5 h-5 text-afaq-blue2" />
+                <Clock3 className="w-5 h-5 text-afaq-blue2" aria-hidden="true" />
                 <h2 className="text-white font-semibold">ساعات الذروة</h2>
               </div>
               <div className="space-y-3">
@@ -505,12 +511,12 @@ export default function AdminAnalyticsPage() {
               <p className="text-white font-semibold mt-1">متصل فعليًا</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <ShieldCheck className="w-5 h-5 text-afaq-blue2 mb-2" />
+              <ShieldCheck className="w-5 h-5 text-afaq-blue2 mb-2" aria-hidden="true" />
               <p className="text-white/50 text-xs">خصوصية الإدارة</p>
               <p className="text-white font-semibold mt-1">زيارات /admin مستبعدة</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <Database className="w-5 h-5 text-afaq-gold mb-2" />
+              <Database className="w-5 h-5 text-afaq-gold mb-2" aria-hidden="true" />
               <p className="text-white/50 text-xs">حداثة البيانات</p>
               <p className="text-white font-semibold mt-1">محدّثة عند الطلب</p>
               <p className="text-white/40 text-xs mt-1" dir="ltr">{new Date(summary.generatedAt).toLocaleString('ar-SA')}</p>

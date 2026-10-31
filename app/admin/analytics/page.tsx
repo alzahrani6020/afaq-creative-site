@@ -15,10 +15,42 @@ type StatusData = {
   generatedAt: string;
 };
 
+type SummaryData = {
+  period: { startDate: string; endDate: string };
+  metrics: {
+    activeUsers: number;
+    sessions: number;
+    screenPageViews: number;
+    engagedSessions: number;
+    engagementRate: number;
+    averageSessionDuration: number;
+    eventCount: number;
+    keyEvents: number;
+  };
+  generatedAt: string;
+};
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 0 }).format(value);
+}
+
+function formatPercent(value: number) {
+  return new Intl.NumberFormat('ar-SA', { style: 'percent', maximumFractionDigits: 1 }).format(value);
+}
+
+function formatDuration(seconds: number) {
+  const rounded = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(rounded / 60);
+  const rest = rounded % 60;
+  return `${minutes}د ${rest}ث`;
+}
+
 export default function AdminAnalyticsPage() {
   const router = useRouter();
   const [data, setData] = useState<StatusData | null>(null);
+  const [summary, setSummary] = useState<SummaryData | null>(null);
   const [error, setError] = useState('');
+  const [summaryError, setSummaryError] = useState('');
 
   useEffect(() => {
     fetch('/api/admin/analytics/status')
@@ -31,7 +63,25 @@ export default function AdminAnalyticsPage() {
         if (!res.ok || !json.success) throw new Error(json.message || 'تعذر تحميل حالة التحليلات');
         return json as StatusData;
       })
-      .then((json) => json && setData(json))
+      .then(async (json) => {
+        if (!json) return;
+        setData(json);
+
+        if (!json.dataApi.configured) return;
+
+        const res = await fetch('/api/admin/analytics/summary');
+        const body = await res.json();
+
+        if (res.status === 401) {
+          router.push('/admin/login');
+          return;
+        }
+        if (!res.ok || !body.success) {
+          setSummaryError(body.message || 'تعذر تحميل بيانات GA4');
+          return;
+        }
+        setSummary(body as SummaryData);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : 'تعذر تحميل حالة التحليلات'));
   }, [router]);
 
@@ -45,11 +95,22 @@ export default function AdminAnalyticsPage() {
 
   const ready = data!.dataApi.configured;
 
+  const cards = summary ? [
+    ['المستخدمون النشطون', formatNumber(summary.metrics.activeUsers)],
+    ['الجلسات', formatNumber(summary.metrics.sessions)],
+    ['مشاهدات الصفحات', formatNumber(summary.metrics.screenPageViews)],
+    ['الجلسات المتفاعلة', formatNumber(summary.metrics.engagedSessions)],
+    ['نسبة التفاعل', formatPercent(summary.metrics.engagementRate)],
+    ['متوسط مدة الجلسة', formatDuration(summary.metrics.averageSessionDuration)],
+    ['الأحداث', formatNumber(summary.metrics.eventCount)],
+    ['الأحداث الرئيسية', formatNumber(summary.metrics.keyEvents)],
+  ] : [];
+
   return (
     <div className="max-w-6xl mx-auto w-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">التحليلات</h1>
-        <p className="text-white/50 text-sm mt-1">حالة جمع البيانات وربط Google Analytics بلوحة الإدارة.</p>
+        <p className="text-white/50 text-sm mt-1">حالة جمع البيانات وقراءة Google Analytics داخل لوحة الإدارة.</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mb-6">
@@ -81,6 +142,36 @@ export default function AdminAnalyticsPage() {
           <p className="text-white/40 text-xs mt-2">حتى لا تختلط حركة المشرفين بحركة العملاء.</p>
         </div>
       </div>
+
+      {ready && !summary && !summaryError && (
+        <div className="flex items-center gap-2 text-white/60 py-6">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span>جارٍ قراءة بيانات GA4...</span>
+        </div>
+      )}
+
+      {summaryError && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-300 rounded-xl p-4 mb-6">
+          {summaryError}
+        </div>
+      )}
+
+      {summary && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <h2 className="text-white font-semibold">ملخص آخر 30 يومًا</h2>
+            <span className="text-white/40 text-xs">بيانات مباشرة من GA4</span>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {cards.map(([label, value]) => (
+              <div key={label} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <p className="text-white/50 text-xs">{label}</p>
+                <p className="text-white text-2xl font-bold mt-2">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!ready && (
         <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-5">

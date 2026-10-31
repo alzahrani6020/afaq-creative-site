@@ -281,6 +281,22 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
     await runMiddleware(req, res, uploadMiddleware);
 
     const body = req.body;
+
+    const corruptedTextFields = Object.entries(body)
+      .filter(([, value]) => typeof value === 'string' && value.includes('\uFFFD'))
+      .map(([key]) => key);
+
+    if (corruptedTextFields.length > 0) {
+      console.warn('Talent registration rejected: corrupted Unicode replacement character detected', {
+        fields: corruptedTextFields,
+      });
+      return res.status(400).json({
+        success: false,
+        code: 'CORRUPTED_TEXT_INPUT',
+        message: 'توجد أحرف غير صالحة في بعض البيانات النصية. يرجى إعادة كتابة الحقل المتأثر ثم المحاولة مرة أخرى.',
+      });
+    }
+
     const parsed = registerSchema.parse(body);
     const personal = personalSchema.parse(JSON.parse(parsed.personal));
 

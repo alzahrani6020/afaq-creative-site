@@ -25,6 +25,13 @@ const statusLabels: Record<string, string> = {
   rejected: 'مرفوض',
 };
 
+const CORRUPTED_TEXT_LABEL = 'بيانات تالفة — يلزم مراجعة الطلب';
+
+function safeText(value?: string | null, fallback = '—') {
+  if (!value) return fallback;
+  return value.includes('\uFFFD') ? CORRUPTED_TEXT_LABEL : value;
+}
+
 const statusClasses: Record<string, string> = {
   new: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   under_review: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
@@ -133,10 +140,12 @@ export default function AdminTalentsPage() {
   const getPrimaryLabel = (talent: Talent) => {
     if (talent.skillProfiles && talent.skillProfiles.length > 0) {
       const primary = talent.skillProfiles.find((p) => p.isPrimary) || talent.skillProfiles[0];
-      if (primary.isCustomProfession && primary.customProfessionName) return primary.customProfessionName;
-      return getProfession(primary.profession)?.nameAr || primary.profession;
+      if (primary.isCustomProfession && primary.customProfessionName) {
+        return safeText(primary.customProfessionName);
+      }
+      return safeText(getProfession(primary.profession)?.nameAr || primary.profession);
     }
-    return talent.category || '—';
+    return safeText(talent.category);
   };
 
   const getExtraCount = (talent: Talent) => {
@@ -146,7 +155,7 @@ export default function AdminTalentsPage() {
   };
 
   const getCountryLabel = (value?: string) => {
-    return countries.find((c) => c.value === value)?.label || value || '—';
+    return safeText(countries.find((c) => c.value === value)?.label || value);
   };
 
   const getCityLabel = (talent: Talent) => {
@@ -154,7 +163,7 @@ export default function AdminTalentsPage() {
     const country = countries.find((c) => c.value === talent.country);
     const region = country?.regions.find((r) => r.value === talent.region);
     const city = region?.cities.find((c) => c.value === talent.city);
-    return city?.label || talent.city;
+    return safeText(city?.label || talent.city);
   };
 
   return (

@@ -4,7 +4,7 @@ import { createSign } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, UnauthorizedError } from '@/lib/admin-auth';
 
-type RangeKey = '7d' | '30d' | '90d';
+type RangeKey = 'today' | '7d' | '30d' | '90d' | 'custom';
 
 class GoogleApiError extends Error {
   stage: 'oauth' | 'ga4';
@@ -41,7 +41,43 @@ function safeGoogleMessage(value: unknown, fallback: string) {
   return value.replace(/[\r\n\t]+/g, ' ').slice(0, 500);
 }
 
-function rangeConfig(range: RangeKey) {
+function parseIsoDate(value: string | null) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return null;
+  return date;
+}
+
+function isoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function rangeConfig(range: RangeKey, startDate: string | null, endDate: string | null) {
+  if (range === 'today') {
+    return {
+      label: 'اليوم',
+      current: { startDate: 'today', endDate: 'today' },
+      previous: { startDate: 'yesterday', endDate: 'yesterday' },
+    };
+  }
+  if (range === 'custom') {
+    const start = parseIsoDate(startDate);
+    const end = parseIsoDate(endDate);
+    if (!start || !end || start > end) return null;
+
+    const dayMs = 24 * 60 * 60 * 1000;
+    const days = Math.floor((end.getTime() - start.getTime()) / dayMs) + 1;
+    if (days < 1 || days > 366) return null;
+
+    const previousEnd = new Date(start.getTime() - dayMs);
+    const previousStart = new Date(previousEnd.getTime() - (days - 1) * dayMs);
+
+    return {
+      label: `من ${isoDate(start)} إلى ${isoDate(end)}`,
+      current: { startDate: isoDate(start), endDate: isoDate(end) },
+      previous: { startDate: isoDate(previousStart), endDate: isoDate(previousEnd) },
+    };
+  }
   if (range === '7d') {
     return {
       label: 'آخر 7 أيام',
@@ -61,6 +97,15 @@ function rangeConfig(range: RangeKey) {
     current: { startDate: '29daysAgo', endDate: 'today' },
     previous: { startDate: '59daysAgo', endDate: '30daysAgo' },
   };
+}
+
+function combineDimensionFilters(
+  ...filters: Array<Record<string, unknown> | null>
+): Record<string, unknown> | undefined {
+  const expressions = filters.filter(Boolean) as Array<Record<string, unknown>>;
+  if (!expressions.length) return undefined;
+  if (expressions.length === 1) return expressions[0];
+  return { andGroup: { expressions } };
 }
 
 async function getAccessToken(email: string, privateKey: string) {
@@ -234,9 +279,42 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const requestedRange = new URL(req.url).searchParams.get('range');
-    const range: RangeKey = requestedRange === '7d' || requestedRange === '90d' ? requestedRange : '30d';
-    const config = rangeConfig(range);
+    const params = new URL(req.url).searchParams;
+    const requestedRange = params.get('range');
+    const range: RangeKey =
+      requestedRange === 'today' ||
+      requestedRange === '7d' ||
+      requestedRange === '90d' ||
+      requestedRange === 'custom'
+        ? requestedRange
+        : '30d';
+    const config = rangeConfig(range, params.get('startDate'), params.get('endDate'));
+    if (!config) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'INVALID_ANALYTICS_RANGE',
+          message: 'الفترة المخصصة غير صالحة. استخدم تاريخ بداية ونهاية صحيحين وبحد أقصى 366 يومًا.',
+        },
+        { status: 400 }
+      );
+    }
+
+    const requestedCountry = params.get('country')?.trim() || '';
+    const country = requestedCountry && requestedCountry !== 'ALL' ? requestedCountry.slice(0, 100) : null;
+    const countryFilter: Record<string, unknown> | null = country
+      ? {
+          filter: {
+            fieldName: 'country',
+            stringFilter: {
+              matchType: 'EXACT',
+              value: country,
+              caseSensitive: false,
+            },
+          },
+        }
+      : null;
+
     const accessToken = await getAccessToken(email, privateKey);
 
     const baseMetrics = [
@@ -264,6 +342,7 @@ export async function GET(req: NextRequest) {
     ] = await Promise.all([
       runReport(propertyId, accessToken, {
         dateRanges: [config.current],
+        ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
         metrics: baseMetrics,
       }),
       runReport(propertyId, accessToken, {
@@ -272,6 +351,7 @@ export async function GET(req: NextRequest) {
       }),
       runReport(propertyId, accessToken, {
         dateRanges: [config.current],
+        ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
         dimensions: [{ name: 'date' }],
         metrics: [
           { name: 'sessions' },
@@ -284,6 +364,7 @@ export async function GET(req: NextRequest) {
       }),
       runReport(propertyId, accessToken, {
         dateRanges: [config.current],
+        ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
         dimensions: [{ name: 'sessionSourceMedium' }],
         metrics: [
           { name: 'sessions' },
@@ -296,6 +377,7 @@ export async function GET(req: NextRequest) {
       }),
       runReport(propertyId, accessToken, {
         dateRanges: [config.current],
+        ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
         dimensions: [{ name: 'country' }, { name: 'city' }],
         metrics: [
           { name: 'sessions' },
@@ -308,6 +390,7 @@ export async function GET(req: NextRequest) {
       }),
       runReport(propertyId, accessToken, {
         dateRanges: [config.current],
+        ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
         dimensions: [{ name: 'deviceCategory' }],
         metrics: [
           { name: 'sessions' },
@@ -319,6 +402,7 @@ export async function GET(req: NextRequest) {
       }),
       runReport(propertyId, accessToken, {
         dateRanges: [config.current],
+        ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
         dimensions: [{ name: 'pageTitle' }, { name: 'pagePath' }],
         metrics: [
           { name: 'screenPageViews' },
@@ -330,6 +414,7 @@ export async function GET(req: NextRequest) {
       }),
       runReport(propertyId, accessToken, {
         dateRanges: [config.current],
+        ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
         dimensions: [{ name: 'newVsReturning' }],
         metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
         orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
@@ -337,6 +422,7 @@ export async function GET(req: NextRequest) {
       }),
       runReport(propertyId, accessToken, {
         dateRanges: [config.current],
+        ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
         dimensions: [{ name: 'hour' }],
         metrics: [{ name: 'sessions' }, { name: 'activeUsers' }],
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
@@ -346,14 +432,14 @@ export async function GET(req: NextRequest) {
         dateRanges: [config.current],
         dimensions: [{ name: 'eventName' }],
         metrics: [{ name: 'eventCount' }, { name: 'activeUsers' }],
-        dimensionFilter: {
+        dimensionFilter: combineDimensionFilters(countryFilter, {
           filter: {
             fieldName: 'eventName',
             inListFilter: {
               values: ['talent_form_start', 'talent_form_step', 'talent_application_submit'],
             },
           },
-        },
+        }),
         orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
         limit: 10,
       }),
@@ -379,6 +465,7 @@ export async function GET(req: NextRequest) {
       success: true,
       range,
       rangeLabel: config.label,
+      countryFilter: country,
       period: config.current,
       previousPeriod: config.previous,
       metrics: current,

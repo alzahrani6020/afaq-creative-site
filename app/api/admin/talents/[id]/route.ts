@@ -272,7 +272,16 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ success: false, message: 'الطلب غير موجود.' }, { status: 404 });
     }
 
-    await prisma.talentApplication.delete({ where: { id } });
+    await prisma.$transaction([
+      prisma.adminActivity.create({
+        data: {
+          adminUserId: admin.id,
+          action: 'حذف طلب موهبة',
+          metadata: JSON.stringify({ applicationNumber: talent.applicationNumber }),
+        },
+      }),
+      prisma.talentApplication.delete({ where: { id } }),
+    ]);
 
     // Clean up stored files after DB deletion. Failures are logged but do not
     // change the success response, since the DB record is already removed.

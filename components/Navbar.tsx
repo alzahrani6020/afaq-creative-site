@@ -7,12 +7,12 @@ import { LanguageToggle } from './LanguageToggle';
 import { useI18n } from './I18nProvider';
 
 const linkKeys = [
-  { href: '#home', key: 'home' as const },
-  { href: '#services', key: 'services' as const },
-  { href: '#talents', key: 'talents' as const, highlight: true },
-  { href: '#clients', key: 'clients' as const },
-  { href: '#licenses', key: 'licenses' as const },
-  { href: '#contact', key: 'contact' as const },
+  { href: '/#home', key: 'home' as const },
+  { href: '/#services', key: 'services' as const },
+  { href: '/#talents', key: 'talents' as const, highlight: true },
+  { href: '/#clients', key: 'clients' as const },
+  { href: '/#licenses', key: 'licenses' as const },
+  { href: '/#contact', key: 'contact' as const },
 ];
 
 function useDateTime() {
@@ -50,7 +50,7 @@ export function Navbar() {
       scrolled ? 'bg-afaq-bg/90 backdrop-blur-xl border-b border-afaq-gold/20' : 'bg-transparent'
     }`}>
       <div className="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between">
-        <a href="#" className="flex items-center gap-4">
+        <a href="/#home" className="flex items-center gap-4">
           <img src="/assets/afaq-logo-v4.png" alt="AFAQ Logo" className="h-16 w-16 rounded-2xl object-cover border border-afaq-gold/30 shadow-lg shadow-afaq-gold/10" />
           <div className="flex flex-col">
             <span className="text-xl font-extrabold bg-gradient-to-r from-afaq-gold via-afaq-gold2 to-afaq-teal bg-clip-text text-transparent leading-tight">
@@ -85,7 +85,7 @@ export function Navbar() {
               <span className={`absolute -bottom-1 right-0 w-0 h-0.5 bg-afaq-gold group-hover:w-full transition-all duration-300 ${l.highlight ? 'bg-afaq-gold' : ''}`} />
             </a>
           ))}
-          <a href="#contact" className="px-5 py-2 rounded-full bg-gradient-to-r from-afaq-blue to-afaq-teal text-white font-bold text-sm hover:shadow-lg hover:shadow-afaq-blue/30 transition-all">
+          <a href="/#contact" className="px-5 py-2 rounded-full bg-gradient-to-r from-afaq-blue to-afaq-teal text-white font-bold text-sm hover:shadow-lg hover:shadow-afaq-blue/30 transition-all">
             {t.nav.cta}
           </a>
           <LanguageToggle />
@@ -106,7 +106,7 @@ export function Navbar() {
                 {l.highlight && <span className="px-1.5 py-0.5 rounded-md bg-afaq-gold/20 text-afaq-gold text-[9px] font-bold">{t.labels.new}</span>}
               </a>
             ))}
-            <a href="#contact" onClick={() => setOpen(false)} className="mt-2 px-6 py-3 rounded-full bg-gradient-to-r from-afaq-blue to-afaq-teal text-white font-bold text-center">{t.nav.cta}</a>
+            <a href="/#contact" onClick={() => setOpen(false)} className="mt-2 px-6 py-3 rounded-full bg-gradient-to-r from-afaq-blue to-afaq-teal text-white font-bold text-center">{t.nav.cta}</a>
             <div className="pt-2 border-t border-white/10">
               <LanguageToggle />
             </div>

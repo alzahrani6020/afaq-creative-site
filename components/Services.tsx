@@ -1,30 +1,32 @@
 'use client';
 
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  Palette, Video, Share2, Globe, Megaphone,
+  Palette, Globe, Megaphone,
   Clapperboard, MonitorSmartphone, Database, PartyPopper,
-  Camera, Lightbulb, BrainCircuit, Smartphone, GraduationCap, 
-  MessageSquare, BarChart3, Wifi
+  Camera, Lightbulb, BrainCircuit, Smartphone, GraduationCap,
+  MessageSquare, BarChart3, Wifi, ArrowLeft
 } from 'lucide-react';
+import { siteServices } from '@/lib/site-services';
 
-const services = [
-  { icon: Clapperboard, title: 'إنتاج مرئي وسينمائي', desc: 'أفلام إعلانية، فيديوهات ترويجية، موشن جرافيك، مونتاج احترافي، VFX وColor Grading', tags: ['تصوير', 'مونتاج', 'موشن جرافيك'] },
-  { icon: Camera, title: 'التصوير الاحترافي', desc: 'تصوير منتجات، بورتريه، فعاليات، عقارات، وتأجير استديوهات مجهزة بالكامل', tags: ['استديوهات', 'تأجير معدات', 'تصوير جوي'] },
-  { icon: Palette, title: 'هوية بصرية', desc: 'تصميم شعارات، هويات تجارية متكاملة، دليل استخدام، وتصميمات مطبوعة', tags: ['لوجو', 'هوية', 'براندينج'] },
-  { icon: MonitorSmartphone, title: 'محتوى رقمي', desc: 'إدارة حسابات التواصل، إنتاج المحتوى الإلكتروني، بودكاست وريلز', tags: ['سوشال ميديا', 'بودكاست', 'محتوى يومي'] },
-  { icon: Globe, title: 'تصميم وتطوير مواقع', desc: 'مواقع تعريفية، متاجر إلكترونية، تطبيقات ويب، UI/UX', tags: ['ويب', 'تطبيقات', 'UI/UX'] },
-  { icon: Smartphone, title: 'تطوير تطبيقات الموبايل', desc: 'تطبيقات iOS وAndroid، تطبيقات إدارة، تطبيقات ذكية', tags: ['iOS', 'Android', 'Flutter'] },
-  { icon: Database, title: 'حلول تقنية وبرمجية', desc: 'تطوير البرامج، قواعد البيانات، أنظمة ERP/CRM، رقمنة', tags: ['برمجة', 'رقمنة', 'أنظمة إدارة'] },
-  { icon: BrainCircuit, title: 'الذكاء الاصطناعي', desc: 'حلول AI مخصصة، chatbots، معالجة اللغة الطبيعية، تحليل البيانات', tags: ['AI', 'Chatbots', 'NLP'] },
-  { icon: Wifi, title: 'شبكات الاتصالات', desc: 'تصميم وإدارة شبكات نقل الصوت والصورة والبيانات، خدمات الإنترنت', tags: ['شبكات', 'نقل البيانات'] },
-  { icon: PartyPopper, title: 'إدارة فعاليات ومواهب', desc: 'تنظيم مؤتمرات، حفلات تدشين، مهرجانات، كاستينج واكتشاف مواهب', tags: ['مؤتمرات', 'كاستينج', 'تنظيم'] },
-  { icon: GraduationCap, title: 'تدريب وتأهيل', desc: 'مراكز تدريب مهارات الموارد البشرية، دورات تقنية، تصوير ومونتاج', tags: ['دورات', 'تأهيل', 'مهارات'] },
-  { icon: Lightbulb, title: 'استشارات وريادة أعمال', desc: 'حاضنات أعمال تكنولوجية، دراسات متخصصة في IT، استشارات تقنية', tags: ['حاضنات', 'دراسات', 'استشارات'] },
-  { icon: MessageSquare, title: 'إنتاج محتوى إعلامي مرخص', desc: 'إنتاج المحتوى الإعلامي المرئي والمسموع المرخص من GCAM', tags: ['GCAM', 'إعلام', 'إذاعي'] },
-  { icon: BarChart3, title: 'تحليل بيانات وبحث علمي', desc: 'مشروعات البحث والتطوير العلمي، تحليل البيانات، مراكز استشارات', tags: ['R&D', 'تحليل', 'بحث'] },
-  { icon: Megaphone, title: 'حملات إعلانية ممولة', desc: 'إدارة حملات جوجل، ميتا، سناب، تيك توك — مع تحليل أداء', tags: ['Google', 'Meta', 'TikTok'] },
-];
+const serviceIcons = {
+  'visual-production': Clapperboard,
+  'professional-photography': Camera,
+  'visual-identity': Palette,
+  'digital-content': MonitorSmartphone,
+  'web-design-development': Globe,
+  'mobile-app-development': Smartphone,
+  'software-solutions': Database,
+  'artificial-intelligence': BrainCircuit,
+  'telecom-networks': Wifi,
+  'events-talents': PartyPopper,
+  'training-development': GraduationCap,
+  'consulting-entrepreneurship': Lightbulb,
+  'licensed-media-content': MessageSquare,
+  'data-analysis-research': BarChart3,
+  'paid-advertising': Megaphone,
+} as const;
 
 export function Services() {
   return (
@@ -42,21 +44,40 @@ export function Services() {
         </motion.div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((s, i) => (
-            <motion.div key={s.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}
-              className="group relative p-8 rounded-3xl bg-white/[0.03] border border-white/[0.06] hover:border-afaq-gold/30 hover:bg-white/[0.06] transition-all duration-500 flex flex-col">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-afaq-blue to-afaq-teal flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <s.icon size={26} className="text-white" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">{s.title}</h3>
-              <p className="text-white/40 leading-relaxed text-sm mb-4 flex-1">{s.desc}</p>
-              <div className="flex flex-wrap gap-2">
-                {s.tags.map((tag) => (
-                  <span key={tag} className="px-3 py-1 rounded-full bg-white/5 text-white/50 text-xs border border-white/10">{tag}</span>
-                ))}
-              </div>
-            </motion.div>
-          ))}
+          {siteServices.map((service, i) => {
+            const Icon = serviceIcons[service.slug as keyof typeof serviceIcons];
+
+            return (
+              <motion.div
+                key={service.slug}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <Link
+                  href={`/services/${service.slug}`}
+                  className="group relative p-8 rounded-3xl bg-white/[0.03] border border-white/[0.06] hover:border-afaq-gold/30 hover:bg-white/[0.06] transition-all duration-500 flex flex-col h-full"
+                  aria-label={`فتح مساحة عمل ${service.title}`}
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-afaq-blue to-afaq-teal flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    {Icon && <Icon size={26} className="text-white" />}
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-3">{service.title}</h3>
+                  <p className="text-white/40 leading-relaxed text-sm mb-4 flex-1">{service.description}</p>
+                  <div className="flex flex-wrap gap-2 mb-5">
+                    {service.tags.map((tag) => (
+                      <span key={tag} className="px-3 py-1 rounded-full bg-white/5 text-white/50 text-xs border border-white/10">{tag}</span>
+                    ))}
+                  </div>
+                  <span className="inline-flex items-center gap-2 text-afaq-gold text-sm font-bold">
+                    افتح مساحة العمل
+                    <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                  </span>
+                </Link>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>

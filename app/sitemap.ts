@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { blogPosts } from '@/lib/blog';
+import { siteServices } from '@/lib/site-services';
 
 const BASE = 'https://afaq-global.com';
 
@@ -35,6 +36,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'yearly',
       priority: 0.3,
     },
+    ...siteServices.map((service) => ({
+      url: `${BASE}/services/${service.slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    })),
     ...blogPosts.map((post) => ({
       url: `${BASE}/blog/${post.slug}`,
       lastModified: new Date(post.dateISO),

@@ -5,9 +5,23 @@ import { motion } from 'framer-motion';
 import { Send, Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
 import { publicWhatsAppHref } from '@/lib/whatsapp-public';
 import { trackEvent } from '@/lib/analytics';
+import { siteServices } from '@/lib/site-services';
 
-export function ContactForm() {
-  const [form, setForm] = useState({ name: '', phone: '', email: '', service: '', message: '' });
+interface ContactFormProps {
+  initialService?: string;
+}
+
+export function ContactForm({ initialService = '' }: ContactFormProps) {
+  const serviceNames = siteServices.map((service) => service.title);
+  const normalizedInitialService = serviceNames.includes(initialService) ? initialService : '';
+
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    service: normalizedInitialService,
+    message: '',
+  });
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -18,20 +32,6 @@ export function ContactForm() {
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 3000);
   };
-
-  const services = [
-    'إنتاج مرئي وسينمائي',
-    'التصوير الاحترافي',
-    'هوية بصرية',
-    'محتوى رقمي',
-    'تصميم وتطوير مواقع',
-    'تطوير تطبيقات',
-    'الذكاء الاصطناعي',
-    'إدارة فعاليات ومواهب',
-    'استشارات',
-    'حملات إعلانية',
-    'أخرى',
-  ];
 
   return (
     <section id="contact" className="py-24 relative overflow-hidden">
@@ -50,7 +50,6 @@ export function ContactForm() {
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-10">
-          {/* Info */}
           <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-6">
             <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
               <div className="flex items-center gap-3 mb-4">
@@ -89,7 +88,6 @@ export function ContactForm() {
             </a>
           </motion.div>
 
-          {/* Form */}
           <motion.form initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} onSubmit={handleSubmit}
             className="p-8 rounded-3xl bg-white/[0.03] border border-white/[0.06] space-y-4">
             <input required type="text" placeholder="الاسم الكامل" value={form.name} onChange={e => setForm({...form, name: e.target.value})}
@@ -104,7 +102,10 @@ export function ContactForm() {
             <select id="service-select" required value={form.service} onChange={e => setForm({...form, service: e.target.value})}
               className="w-full px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-afaq-gold/50 appearance-none">
               <option value="" className="bg-afaq-bg">اختر الخدمة</option>
-              {services.map(s => <option key={s} value={s} className="bg-afaq-bg">{s}</option>)}
+              {serviceNames.map((serviceName) => (
+                <option key={serviceName} value={serviceName} className="bg-afaq-bg">{serviceName}</option>
+              ))}
+              <option value="أخرى" className="bg-afaq-bg">أخرى</option>
             </select>
             <textarea rows={4} placeholder="تفاصيل المشروع..." value={form.message} onChange={e => setForm({...form, message: e.target.value})}
               className="w-full px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-afaq-gold/50 resize-none" />

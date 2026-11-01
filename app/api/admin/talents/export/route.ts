@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
 
     const { searchParams } = new URL(req.url);
+    const search = searchParams.get('search')?.trim() || '';
     const status = searchParams.get('status') as ApplicationStatus | null;
     const country = searchParams.get('country')?.trim().toUpperCase() || '';
 
@@ -42,6 +43,13 @@ export async function GET(req: NextRequest) {
       where.status = status;
     }
     if (country) where.country = country;
+    if (search) {
+      where.OR = [
+        { applicationNumber: { contains: search } },
+        { email: { contains: search } },
+        { phone: { contains: search } },
+      ];
+    }
 
     const talents = await prisma.talentApplication.findMany({
       where,
@@ -126,6 +134,7 @@ export async function GET(req: NextRequest) {
           adminUserId: admin.id,
           action: 'talents_export_csv',
           metadata: JSON.stringify({
+            search: search || null,
             status: status || null,
             country: country || null,
             rowCount: talents.length,

@@ -322,3 +322,61 @@ export function buildVerificationErrorHtml(message: string): string {
     </html>
   `;
 }
+
+
+const applicationStatusLabels: Record<string, string> = {
+  new: 'جديد',
+  under_review: 'قيد المراجعة',
+  qualified: 'مؤهل',
+  need_information: 'يحتاج بيانات إضافية',
+  contacted: 'تم التواصل',
+  accepted: 'مقبول',
+  rejected: 'مرفوض',
+};
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+export function buildApplicationStatusEmail({
+  applicationNumber,
+  name,
+  status,
+}: {
+  applicationNumber: string;
+  name?: string | null;
+  status: string;
+}): { subject: string; html: string; text: string } {
+  const statusLabel = applicationStatusLabels[status] || status;
+  const safeName = escapeHtml(name || 'المتقدم');
+  const safeApplicationNumber = escapeHtml(applicationNumber);
+  const safeStatus = escapeHtml(statusLabel);
+  const subject = `تحديث حالة طلبك في أفاق – ${applicationNumber}`;
+  const html = `
+    <div dir="rtl" style="font-family: Arial, Tahoma, sans-serif; line-height: 1.7; color: #1a1a1a; max-width: 600px; margin: 0 auto;">
+      <div style="background: #0f172a; padding: 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 22px;">أفاق</h1>
+      </div>
+      <div style="padding: 24px; background: #ffffff; border: 1px solid #e5e7eb;">
+        <p style="font-size: 18px; margin-bottom: 16px;">مرحبًا ${safeName}،</p>
+        <p>تم تحديث حالة طلبك في منصة أفاق.</p>
+        <p style="margin: 20px 0;">
+          <strong>رقم الطلب:</strong>
+          <span style="direction:ltr; display:inline-block;">${safeApplicationNumber}</span>
+        </p>
+        <p style="margin: 20px 0;">
+          <strong>الحالة الحالية:</strong>
+          <span style="color:#0ea5e9; font-weight:bold;">${safeStatus}</span>
+        </p>
+        <p>سنواصل التواصل معك عبر بيانات الاتصال المسجلة عند الحاجة.</p>
+      </div>
+    </div>
+  `;
+  const text = `مرحبًا ${name || 'المتقدم'}،\n\nتم تحديث حالة طلبك في منصة أفاق.\nرقم الطلب: ${applicationNumber}\nالحالة الحالية: ${statusLabel}\n\nسنواصل التواصل معك عبر بيانات الاتصال المسجلة عند الحاجة.`;
+  return { subject, html, text };
+}

@@ -4,6 +4,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, UnauthorizedError } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 
+function getAdminSubject(metadata: string | null): string | null {
+  if (!metadata) return null;
+  try {
+    const parsed = JSON.parse(metadata);
+    return typeof parsed?.applicationNumber === 'string' ? parsed.applicationNumber : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     await requireAdmin(req);
@@ -40,7 +50,7 @@ export async function GET(req: NextRequest) {
         id: `admin-${item.id}`,
         type: 'admin',
         action: item.action,
-        subject: null,
+        subject: getAdminSubject(item.metadata),
         metadata: item.metadata,
         admin: item.adminUser,
         createdAt: item.createdAt.toISOString(),

@@ -115,6 +115,10 @@ export function Footer() {
               <Lock size={12} /> {t.footer.privacy}
             </Link>
             <span className="text-white/10">|</span>
+            <Link href="/terms" className="hover:text-afaq-gold transition-colors flex items-center gap-1">
+              <FileCheck size={12} /> الشروط والأحكام
+            </Link>
+            <span className="text-white/10">|</span>
             <Link href="/delete-account" className="hover:text-afaq-gold transition-colors flex items-center gap-1">
               <Trash2 size={12} /> {t.footer.deleteData}
             </Link>

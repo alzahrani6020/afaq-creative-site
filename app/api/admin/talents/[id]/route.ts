@@ -6,6 +6,7 @@ const ApplicationStatus = ['new', 'under_review', 'qualified', 'need_information
 import { requireAdmin, UnauthorizedError, isAuthorizedRole } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 import { getStorage, isStorageUrl, extractStorageKey } from '@/lib/storage';
+import { buildApplicationStatusEmail, sendTransactionalEmail } from '@/lib/email';
 
 const updateSchema = z.object({
   status: z.enum(['new', 'under_review', 'qualified', 'need_information', 'contacted', 'accepted', 'rejected']).optional(),
@@ -91,6 +92,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const data: any = {};
     const changes: string[] = [];
+    const statusChanged = Boolean(parsed.status && parsed.status !== current.status);
 
     // Status and admin notes
     if (parsed.status && Object.values(ApplicationStatus).includes(parsed.status)) {
@@ -232,6 +234,37 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
       return talent;
     });
+
+    if (statusChanged && updated.email) {
+      try {
+        const personal = safeJsonParse<Record<string, any>>(updated.personal, {});
+        const { subject, html, text } = buildApplicationStatusEmail({
+          applicationNumber: updated.applicationNumber,
+          name: personal.full_name || null,
+          status: updated.status,
+        });
+        const emailResult = await sendTransactionalEmail({
+          to: updated.email,
+          subject,
+          html,
+          text,
+        });
+        if (!emailResult.success) {
+          console.error('Failed to send talent status email notification', {
+            applicationNumber: updated.applicationNumber,
+            status: updated.status,
+            error: emailResult.error,
+          });
+        }
+      } catch (emailErr) {
+        const message = emailErr instanceof Error ? emailErr.message : String(emailErr);
+        console.error('Talent status email notification error', {
+          applicationNumber: updated.applicationNumber,
+          status: updated.status,
+          error: message,
+        });
+      }
+    }
 
     return NextResponse.json({ success: true, talent: updated });
   } catch (error) {

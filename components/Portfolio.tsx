@@ -4,12 +4,12 @@ import { motion } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
 
 const items = [
-  { title: 'هوية بصرية - مطعم لذيذ', category: 'هوية بصرية', color: 'from-afaq-purple to-afaq-pink', href: '#' },
-  { title: 'حملة إعلانية - تقنية', category: 'سوشال ميديا', color: 'from-afaq-cyan to-afaq-purple', href: '#' },
-  { title: 'موقع تعريفي - عقارات', category: 'تصميم مواقع', color: 'from-afaq-pink to-afaq-gold', href: '#' },
-  { title: 'فيديو إعلاني - سياحة', category: 'فيديو', color: 'from-afaq-gold to-afaq-cyan', href: '#' },
-  { title: 'تصميم جرافيك - مهرجان', category: 'جرافيك', color: 'from-afaq-purple to-afaq-cyan', href: '#' },
-  { title: 'براندينغ - عيادة طبية', category: 'هوية بصرية', color: 'from-afaq-pink to-afaq-purple', href: '#' },
+  { title: 'هوية بصرية - مطعم لذيذ', category: 'هوية بصرية', color: 'from-afaq-purple to-afaq-pink', href: '/services/visual-identity' },
+  { title: 'حملة إعلانية - تقنية', category: 'سوشال ميديا', color: 'from-afaq-cyan to-afaq-purple', href: '/services/paid-advertising' },
+  { title: 'موقع تعريفي - عقارات', category: 'تصميم مواقع', color: 'from-afaq-pink to-afaq-gold', href: '/services/web-design-development' },
+  { title: 'فيديو إعلاني - سياحة', category: 'فيديو', color: 'from-afaq-gold to-afaq-cyan', href: '/services/visual-production' },
+  { title: 'تصميم جرافيك - مهرجان', category: 'جرافيك', color: 'from-afaq-purple to-afaq-cyan', href: '/services/digital-content' },
+  { title: 'براندينغ - عيادة طبية', category: 'هوية بصرية', color: 'from-afaq-pink to-afaq-purple', href: '/services/visual-identity' },
 ];
 
 export function Portfolio() {

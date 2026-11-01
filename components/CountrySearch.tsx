@@ -5,6 +5,29 @@ import { Search, ChevronDown } from 'lucide-react';
 import { countries } from '@/lib/catalog/locations';
 import { CountryOption } from '@/lib/catalog/types';
 
+function FlagImage({ country, size = 24 }: { country: CountryOption; size?: number }) {
+  const code = country.value.toLowerCase();
+  return (
+    <span className="inline-flex items-center justify-center shrink-0" style={{ width: size, height: Math.round(size * 0.75) }}>
+      <img
+        src={`https://flagcdn.com/w40/${code}.png`}
+        srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
+        width={size}
+        height={Math.round(size * 0.75)}
+        alt={`علم ${country.label}`}
+        loading="lazy"
+        className="block rounded-[2px] object-cover shadow-sm"
+        onError={(e) => {
+          e.currentTarget.style.display = 'none';
+          const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+          if (fallback) fallback.style.display = 'inline';
+        }}
+      />
+      <span className="hidden text-xs text-white/60">{country.value}</span>
+    </span>
+  );
+}
+
 interface CountrySearchProps {
   value: string;
   onChange: (country: CountryOption) => void;
@@ -53,8 +76,13 @@ export function CountrySearch({ value, onChange, error }: CountrySearchProps) {
         onClick={() => setOpen((v) => !v)}
         className={`w-full px-5 py-3 rounded-xl bg-white/5 border ${error ? 'border-red-500/50' : 'border-white/10'} text-white focus:outline-none focus:border-afaq-gold/50 flex items-center justify-between text-right`}
       >
-        <span className={selected ? 'text-white' : 'text-white/30'}>
-          {selected ? `${selected.flag || ''} ${selected.label}` : 'اختر الدولة *'}
+        <span className={selected ? 'text-white flex items-center gap-2' : 'text-white/30'}>
+          {selected ? (
+            <>
+              <FlagImage country={selected} size={24} />
+              <span>{selected.label}</span>
+            </>
+          ) : 'اختر الدولة *'}
         </span>
         <ChevronDown className={`w-4 h-4 text-white/40 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -83,8 +111,9 @@ export function CountrySearch({ value, onChange, error }: CountrySearchProps) {
                   onClick={() => handleSelect(country)}
                   className={`w-full text-right px-4 py-3 hover:bg-white/5 border-b border-white/5 last:border-0 flex items-center justify-between ${value === country.value ? 'bg-afaq-gold/10' : ''}`}
                 >
-                  <span className="text-white text-sm">
-                    {country.flag || ''} {country.label}
+                  <span className="text-white text-sm flex items-center gap-2">
+                    <FlagImage country={country} size={22} />
+                    <span>{country.label}</span>
                   </span>
                   <span className="text-white/40 text-xs">+{country.dialCode}</span>
                 </button>

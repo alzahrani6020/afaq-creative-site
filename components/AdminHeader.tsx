@@ -17,8 +17,14 @@ export function AdminHeader({ admin }: AdminHeaderProps) {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/admin/logout', { method: 'POST' });
-      router.push('/admin/login');
+      const res = await fetch('/api/admin/logout', { method: 'POST' });
+      if (res.ok || res.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+
+      const json = await res.json().catch(() => null);
+      throw new Error(json?.message || 'Logout failed');
     } catch (err) {
       console.error('Logout failed', err);
     }

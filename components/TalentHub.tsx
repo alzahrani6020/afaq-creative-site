@@ -504,11 +504,18 @@ export function TalentHub() {
     const nextErrors: Record<string, string> = {};
     if (quickStep === 1) {
       if (!personal.full_name.trim()) nextErrors.full_name = 'أدخل الاسم الكامل';
+      const quickCountryCode = personal.country || '';
+      const quickDialCode = countryDialCodes[quickCountryCode];
+      if (!quickCountryCode || !quickDialCode) {
+        nextErrors.country = 'اختر الدولة';
+      }
       if (!personal.phone.trim()) {
         nextErrors.phone = 'أدخل رقم الجوال';
       } else {
-        const digitsOnly = normalizePhone(personal.phone).replace(/^0+/, '').replace(/^966/, '');
-        if (digitsOnly.length < 7) nextErrors.phone = 'رقم الجوال غير صحيح';
+        const digitsOnly = normalizePhone(personal.phone)
+          .replace(/^0+/, '')
+          .replace(new RegExp(`^${quickDialCode || ''}`), '');
+        if (!quickDialCode || digitsOnly.length < 7) nextErrors.phone = 'رقم الجوال غير صحيح';
       }
       if (!personal.email.trim()) {
         nextErrors.email = 'أدخل البريد الإلكتروني';
@@ -545,10 +552,22 @@ export function TalentHub() {
     };
     setProfiles([quickProfile]);
     setEditingIndex(0);
-    setLocation({ ...SA_DEFAULT_LOCATION });
-    setPersonal((prev) => ({ ...prev, country: 'SA' }));
+
+    const selectedQuickCountry = countries.find((country) => country.value === personal.country);
+    const firstRegion = selectedQuickCountry?.regions?.[0];
+    const firstCity = firstRegion?.cities?.[0];
+    const quickLocation: LocationInfo = {
+      country: selectedQuickCountry?.value || '',
+      region: firstRegion?.value || '',
+      city: firstCity?.value || '',
+      district: '',
+      serviceArea: ['حسب الاتفاق'],
+      workPlace: ['أعمل عن بُعد'],
+    };
+
+    setLocation(quickLocation);
     // Submit on next tick after state flush via direct payload path
-    await handleSubmitWithProfiles([quickProfile], { ...SA_DEFAULT_LOCATION }, { ...personal, country: 'SA' });
+    await handleSubmitWithProfiles([quickProfile], quickLocation, personal);
   };
 
   const handleFileChange = (key: keyof Files, e: FormEvent<HTMLInputElement>) => {
@@ -697,8 +716,7 @@ export function TalentHub() {
     setFlowMode('quick');
     setQuickStep(1);
     setErrors({});
-    setLocation({ ...SA_DEFAULT_LOCATION });
-    setPersonal((prev) => ({ ...prev, country: 'SA' }));
+    setPersonal((prev) => ({ ...prev, country: prev.country || 'SA' }));
   };
 
   if (result?.success) {
@@ -842,14 +860,33 @@ export function TalentHub() {
                     className={`w-full px-5 py-3 rounded-xl bg-white/5 border ${errors.full_name ? 'border-red-500/50' : 'border-white/10'} text-white placeholder-white/30 focus:outline-none focus:border-afaq-gold/50`}
                   />
                   {errors.full_name && <p className="text-red-400 text-xs">{errors.full_name}</p>}
+                  <CountrySearch
+                    value={personal.country || ''}
+                    onChange={(country) => {
+                      setPersonal((prev) => ({
+                        ...prev,
+                        country: country.value,
+                        phone: stripDialCode(prev.phone, countryDialCodes[prev.country || ''] || ''),
+                      }));
+                      setErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.country;
+                        delete next.phone;
+                        return next;
+                      });
+                    }}
+                    error={errors.country}
+                  />
                   <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-r-xl bg-white/10 border border-l-0 border-white/10 text-white/70 text-sm">+966</span>
+                    <span className="inline-flex items-center px-3 rounded-r-xl bg-white/10 border border-l-0 border-white/10 text-white/70 text-sm">
+                      +{countryDialCodes[personal.country || 'SA'] || '---'}
+                    </span>
                     <input
                       type="tel"
                       inputMode="numeric"
                       placeholder="رقم الجوال *"
                       value={personal.phone}
-                      onChange={(e) => setPersonal({ ...personal, phone: e.target.value, country: 'SA' })}
+                      onChange={(e) => setPersonal({ ...personal, phone: e.target.value })}
                       className={`flex-1 px-5 py-3 rounded-l-xl bg-white/5 border ${errors.phone ? 'border-red-500/50' : 'border-white/10'} text-white placeholder-white/30 focus:outline-none focus:border-afaq-gold/50`}
                     />
                   </div>
@@ -905,7 +942,7 @@ export function TalentHub() {
                     className={`w-full px-5 py-3 rounded-xl bg-white/5 border ${errors.quickProfession ? 'border-red-500/50' : 'border-white/10'} text-white placeholder-white/30 focus:outline-none focus:border-afaq-gold/50`}
                   />
                   {errors.quickProfession && <p className="text-red-400 text-xs">{errors.quickProfession}</p>}
-                  <p className="text-white/40 text-xs">الموقع يُفترض السعودية (الرياض) ويمكن تعديله لاحقاً من لوحة المتابعة أو واتساب.</p>
+                  <p className="text-white/40 text-xs">سيُستخدم اختيار الدولة في التسجيل السريع لتحديد مفتاح الاتصال والموقع المبدئي، ويمكن استكمال المنطقة والمدينة لاحقًا عند الحاجة.</p>
                 </div>
               )}
               <div className="flex justify-between items-center pt-4 border-t border-white/10">

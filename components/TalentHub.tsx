@@ -872,7 +872,7 @@ export function TalentHub() {
                       className="mt-1 w-5 h-5 accent-afaq-gold rounded"
                     />
                     <span className="text-white/70 text-sm">
-                      أوافق على <a href="/privacy" target="_blank" className="text-afaq-gold hover:underline">سياسة الخصوصية</a>
+                      أوافق على <a href="/terms" target="_blank" className="text-afaq-gold hover:underline">الشروط والأحكام</a> و<a href="/privacy" target="_blank" className="text-afaq-gold hover:underline">سياسة الخصوصية</a>
                     </span>
                   </label>
                   {errors.privacy && <p className="text-red-400 text-xs">{errors.privacy}</p>}
@@ -1482,7 +1482,7 @@ export function TalentHub() {
                       className="mt-1 w-5 h-5 accent-afaq-gold rounded"
                     />
                     <span className="text-white/70 text-sm">
-                      أوافق على <a href="/privacy" target="_blank" className="text-afaq-gold hover:underline">سياسة الخصوصية</a> وعلى مشاركة بياناتي لأغراض التقييم والربط بالفرص.
+                      أوافق على <a href="/terms" target="_blank" className="text-afaq-gold hover:underline">الشروط والأحكام</a> و<a href="/privacy" target="_blank" className="text-afaq-gold hover:underline">سياسة الخصوصية</a> وعلى معالجة بياناتي لأغراض التقييم وإدارة الطلب والربط بالفرص وفق ما توضحه السياسة.
                     </span>
                   </label>
                   {errors.privacy && <p className="text-red-400 text-xs mt-1">{errors.privacy}</p>}

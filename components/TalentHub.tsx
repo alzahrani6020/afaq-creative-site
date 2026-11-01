@@ -510,6 +510,11 @@ export function TalentHub() {
         const digitsOnly = normalizePhone(personal.phone).replace(/^0+/, '').replace(/^966/, '');
         if (digitsOnly.length < 7) nextErrors.phone = 'رقم الجوال غير صحيح';
       }
+      if (!personal.email.trim()) {
+        nextErrors.email = 'أدخل البريد الإلكتروني';
+      } else if (!isValidEmail(personal.email)) {
+        nextErrors.email = 'أدخل بريدًا إلكترونيًا صحيحًا، مثال: name@example.com';
+      }
       if (!personal.privacy) nextErrors.privacy = 'الموافقة على سياسة الخصوصية مطلوبة';
     }
     if (quickStep === 2) {
@@ -800,7 +805,7 @@ export function TalentHub() {
                   className="text-right p-5 rounded-2xl border border-afaq-gold/40 bg-afaq-gold/10 hover:bg-afaq-gold/20 transition"
                 >
                   <p className="text-afaq-gold font-bold text-lg mb-1">تسجيل سريع</p>
-                  <p className="text-white/60 text-sm">اسم + جوال + مهنة — أقل من دقيقة</p>
+                  <p className="text-white/60 text-sm">اسم + جوال + بريد + مهنة — أقل من دقيقة</p>
                 </button>
                 <button
                   type="button"
@@ -849,6 +854,16 @@ export function TalentHub() {
                     />
                   </div>
                   {errors.phone && <p className="text-red-400 text-xs">{errors.phone}</p>}
+                  <input
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder="البريد الإلكتروني *"
+                    value={personal.email}
+                    onChange={(e) => setPersonal({ ...personal, email: e.target.value })}
+                    className={`w-full px-5 py-3 rounded-xl bg-white/5 border ${errors.email ? 'border-red-500/50' : 'border-white/10'} text-white placeholder-white/30 focus:outline-none focus:border-afaq-gold/50`}
+                  />
+                  {errors.email && <p className="text-red-400 text-xs">{errors.email}</p>}
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
                       type="checkbox"

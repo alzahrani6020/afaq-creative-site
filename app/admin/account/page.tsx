@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Loader2, Lock, CheckCircle } from 'lucide-react';
 
 export default function AdminAccountPage() {
+  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -36,6 +38,11 @@ export default function AdminAccountPage() {
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
       });
       const json = await res.json();
+
+      if (res.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
 
       if (res.ok && json.success) {
         setMessage(json.message);

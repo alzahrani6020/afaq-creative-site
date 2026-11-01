@@ -233,21 +233,24 @@ const registerSchema = z.object({
 });
 
 async function generateApplicationNumber(): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `AFQ-${year}-`;
-  const last = await prisma.talentApplication.findFirst({
-    where: { applicationNumber: { startsWith: prefix } },
-    orderBy: { applicationNumber: 'desc' },
-  });
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const yearStart = Date.UTC(year, 0, 1);
+  const millisIntoYear = now.getTime() - yearStart;
 
-  let next = 1;
-  if (last) {
-    const parts = last.applicationNumber.split('-');
-    const lastNum = parseInt(parts[parts.length - 1], 10);
-    if (!isNaN(lastNum)) next = lastNum + 1;
+  // Use a time-based monotonic component plus cryptographic entropy so
+  // deleted applications never cause old numbers to be reused.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const entropy = crypto.randomInt(0, 1_000_000);
+    const candidate = `AFQ-${year}-${String(millisIntoYear).padStart(11, '0')}${String(entropy).padStart(6, '0')}`;
+    const exists = await prisma.talentApplication.findUnique({
+      where: { applicationNumber: candidate },
+      select: { id: true },
+    });
+    if (!exists) return candidate;
   }
 
-  return `${prefix}${String(next).padStart(6, '0')}`;
+  throw new Error('Unable to allocate a unique application number.');
 }
 
 // Simple in-memory rate limiter (per IP)

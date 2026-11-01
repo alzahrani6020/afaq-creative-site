@@ -200,18 +200,28 @@ export default function AdminTalentDetailPage() {
 
   const handleAddActivity = async () => {
     if (!newActivity.trim()) return;
+    setError('');
     try {
       const res = await fetch(`/api/admin/talents/${id}/activity`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: newActivity.trim() }),
       });
-      if (res.ok) {
+      const json = await res.json();
+
+      if (res.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+
+      if (res.ok && json.success) {
         setNewActivity('');
         await fetchTalent();
+      } else {
+        setError(json.message || 'تعذر إضافة النشاط.');
       }
     } catch (err) {
-      console.error(err);
+      setError('حدث خطأ أثناء إضافة النشاط.');
     }
   };
 

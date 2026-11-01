@@ -87,12 +87,13 @@ export default function AdminTalentsPage() {
   const [country, setCountry] = useState('');
   const [page, setPage] = useState(1);
 
-  const fetchTalents = async () => {
+  const fetchTalents = async (pageOverride?: number) => {
     setLoading(true);
     setError('');
 
     const params = new URLSearchParams();
-    params.set('page', String(page));
+    params.set('page', String(pageOverride ?? page));
+    if (search) params.set('search', search);
     if (search) params.set('search', search);
     if (status) params.set('status', status);
     if (country) params.set('country', country);
@@ -127,7 +128,7 @@ export default function AdminTalentsPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchTalents();
+    fetchTalents(1);
   };
 
   const handleExport = () => {

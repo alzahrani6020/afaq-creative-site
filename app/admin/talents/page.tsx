@@ -94,7 +94,6 @@ export default function AdminTalentsPage() {
     const params = new URLSearchParams();
     params.set('page', String(pageOverride ?? page));
     if (search) params.set('search', search);
-    if (search) params.set('search', search);
     if (status) params.set('status', status);
     if (country) params.set('country', country);
 
@@ -133,6 +132,7 @@ export default function AdminTalentsPage() {
 
   const handleExport = () => {
     const params = new URLSearchParams();
+    if (search) params.set('search', search);
     if (status) params.set('status', status);
     if (country) params.set('country', country);
     window.open(`/api/admin/talents/export?${params.toString()}`, '_blank');

@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, AdminSession } from './lib/session-config';
-import { TRUSTED_DEVICE_COOKIE_NAME } from './lib/trusted-device-core';
+
+const TRUSTED_DEVICE_COOKIE_NAME = 'afaq_admin_device';
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

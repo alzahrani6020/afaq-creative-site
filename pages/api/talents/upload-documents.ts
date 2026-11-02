@@ -88,6 +88,19 @@ function existingFieldBytes(attachments: Record<string, any>, field: string): nu
   return value && typeof value === 'object' ? Math.max(0, Number(value.size || 0)) : 0;
 }
 
+const extensionContentTypes: Record<string, string[]> = {
+  '.jpg': ['image/jpeg'],
+  '.jpeg': ['image/jpeg'],
+  '.png': ['image/png'],
+  '.webp': ['image/webp'],
+  '.pdf': ['application/pdf'],
+  '.doc': ['application/msword'],
+  '.docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+  '.mp4': ['video/mp4'],
+  '.webm': ['video/webm'],
+  '.mov': ['video/quicktime'],
+};
+
 function validateDeclaredFile(field: string, originalName: string, size: number) {
   const rule = fieldRules[field];
   if (!rule) throw new Error('نوع المرفق غير مسموح.');
@@ -99,6 +112,12 @@ function validateDeclaredFile(field: string, originalName: string, size: number)
     throw new Error('امتداد الملف لا يطابق نوع المرفق المسموح.');
   }
   return rule;
+}
+
+function contentTypeMatchesExtension(originalName: string, contentType: string): boolean {
+  const ext = path.extname(originalName).toLowerCase();
+  const expected = extensionContentTypes[ext] || [];
+  return expected.includes(contentType);
 }
 
 function hasExpectedSignature(buffer: Buffer, contentType: string): boolean {
@@ -132,12 +151,19 @@ async function verifyUploadedBlobContent(url: string, contentType: string): Prom
     cache: 'no-store',
     redirect: 'error',
   });
-  if (!response.ok && response.status !== 206) {
+  if (!response.ok || !response.body) {
     throw new Error('تعذر التحقق من محتوى الملف بعد الرفع.');
   }
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (!hasExpectedSignature(buffer, contentType)) {
-    throw new Error('محتوى الملف لا يطابق نوعه المعلن.');
+
+  const reader = response.body.getReader();
+  try {
+    const { value } = await reader.read();
+    const buffer = Buffer.from(value || new Uint8Array());
+    if (!hasExpectedSignature(buffer, contentType)) {
+      throw new Error('محتوى الملف لا يطابق نوعه المعلن.');
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
   }
 }
 
@@ -491,9 +517,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const now = new Date().toISOString();
 
         const actualContentType = String(blob.contentType || '');
-        if (!rule.types.includes(actualContentType)) {
+        const originalName = String(payload.originalName || '');
+        if (!rule.types.includes(actualContentType) || !contentTypeMatchesExtension(originalName, actualContentType)) {
           await safeDelete([blob.url]);
-          throw new Error('نوع الملف الفعلي غير مسموح.');
+          throw new Error('نوع الملف الفعلي لا يطابق امتداده أو نوع المرفق المسموح.');
         }
 
         try {

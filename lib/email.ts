@@ -280,7 +280,7 @@ export function buildApplicationReceivedEmail({
   return { subject, html, text };
 }
 
-export function buildVerificationSuccessHtml(applicationNumber: string): string {
+export function buildVerificationSuccessHtml(applicationNumber: string, uploadUrl?: string): string {
   return `
     <!DOCTYPE html>
     <html lang="ar" dir="rtl">
@@ -301,7 +301,8 @@ export function buildVerificationSuccessHtml(applicationNumber: string): string 
         <h1>تم تأكيد بريدك الإلكتروني بنجاح</h1>
         <p>رقم طلبك:</p>
         <div class="number">${applicationNumber}</div>
-        <p>يمكنك الآن متابعة طلبك عند التواصل معنا.</p>
+        <p>تم تأكيد بريدك، ويمكنك استكمال ملفك الآن.</p>
+        ${uploadUrl ? `<a href="${uploadUrl}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#14b8a6;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">رفع الوثائق والصور والفيديو</a>` : ""}
       </div>
     </body>
     </html>

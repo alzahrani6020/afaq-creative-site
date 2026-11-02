@@ -15,6 +15,7 @@ const updateSchema = z.object({
   personal: z.record(z.string(), z.any()).optional(),
   location: z.record(z.string(), z.any()).optional(),
   links: z.record(z.string(), z.string().or(z.literal(''))).optional(),
+  legalHold: z.boolean().optional(),
 });
 
 function safeJsonParse<T = any>(str: string | null | undefined, fallback: T): T {
@@ -94,6 +95,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const data: any = {};
     const changes: string[] = [];
     const statusChanged = Boolean(parsed.status && parsed.status !== current.status);
+
+    if (typeof parsed.legalHold === 'boolean') {
+      const attachments = safeJsonParse<Record<string, any>>(current.attachments, {});
+      const workflow = attachments._workflow && typeof attachments._workflow === 'object'
+        ? attachments._workflow
+        : {};
+      const wasHeld = workflow.legalHold === true;
+
+      attachments._workflow = {
+        ...workflow,
+        legalHold: parsed.legalHold,
+        legalHoldAt: parsed.legalHold ? new Date().toISOString() : undefined,
+        legalHoldBy: parsed.legalHold ? admin.id : undefined,
+      };
+
+      if (!parsed.legalHold) {
+        delete attachments._workflow.legalHoldAt;
+        delete attachments._workflow.legalHoldBy;
+      }
+
+      if (wasHeld !== parsed.legalHold) {
+        data.attachments = safeJsonStringify(attachments);
+        changes.push(parsed.legalHold ? 'تفعيل الحجز القانوني على الطلب' : 'إلغاء الحجز القانوني عن الطلب');
+      }
+    }
 
     if (statusChanged && parsed.status === 'need_information') {
       const attachments = safeJsonParse<Record<string, any>>(current.attachments, {});
@@ -323,6 +349,17 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
     if (!talent) {
       return NextResponse.json({ success: false, message: 'الطلب غير موجود.' }, { status: 404 });
+    }
+
+    const deleteAttachments = safeJsonParse<Record<string, any>>(talent.attachments, {});
+    const deleteWorkflow = deleteAttachments._workflow && typeof deleteAttachments._workflow === 'object'
+      ? deleteAttachments._workflow
+      : {};
+    if (deleteWorkflow.legalHold === true) {
+      return NextResponse.json(
+        { success: false, message: 'لا يمكن حذف الطلب لأن الحجز القانوني مفعّل عليه.' },
+        { status: 409 }
+      );
     }
 
     await prisma.$transaction([

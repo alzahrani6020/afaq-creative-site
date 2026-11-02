@@ -82,6 +82,7 @@ async function resolveApplication(applicationNumber: string, token: string) {
   if (!applicationNumber || !token) return null;
   const application = await prisma.talentApplication.findUnique({ where: { applicationNumber } });
   if (!application) return null;
+  if (!application.emailVerified) return null;
   if (!verifyApplicantUploadToken(token, application.id, application.applicationNumber)) return null;
   return application;
 }
@@ -136,8 +137,14 @@ function buildChecklist(application: any, attachments: Record<string, any>) {
         Boolean(attachments.work_video),
     },
   ];
+  const complete = required.every((item) => item.complete);
+  const workflow = attachments._workflow && typeof attachments._workflow === 'object'
+    ? attachments._workflow
+    : {};
   return {
-    status: required.every((item) => item.complete) ? 'complete' : 'incomplete',
+    status: complete ? 'complete' : 'incomplete',
+    submitted: workflow.submitted === true,
+    submittedAt: workflow.submittedAt || null,
     required,
     recommended,
   };
@@ -198,6 +205,61 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
+  if (req.method === 'PATCH') {
+    const applicationNumber = typeof req.query.applicationNumber === 'string' ? req.query.applicationNumber : '';
+    const token = typeof req.query.token === 'string' ? req.query.token : '';
+    const application = await resolveApplication(applicationNumber, token);
+    if (!application) {
+      return res.status(401).json({ success: false, message: 'يجب تأكيد البريد الإلكتروني أولًا أو طلب رابط استكمال جديد.' });
+    }
+
+    const attachments = parseAttachments(application.attachments);
+    const checklist = buildChecklist(application, attachments);
+    if (checklist.status !== 'complete') {
+      return res.status(400).json({ success: false, message: 'لا يمكن إرسال الملف للمراجعة قبل استكمال المتطلبات الأساسية.' });
+    }
+
+    const workflow = attachments._workflow && typeof attachments._workflow === 'object'
+      ? attachments._workflow
+      : {};
+
+    if (workflow.submitted === true) {
+      return res.status(200).json({
+        success: true,
+        message: 'الملف مُرسل للمراجعة بالفعل.',
+        current: publicCurrent(application, attachments),
+      });
+    }
+
+    const now = new Date().toISOString();
+    attachments._workflow = {
+      ...workflow,
+      submitted: true,
+      submittedAt: now,
+      version: Number(workflow.version || 0) + 1,
+    };
+
+    await prisma.$transaction([
+      prisma.talentApplication.update({
+        where: { id: application.id },
+        data: { attachments: JSON.stringify(attachments), status: 'under_review' },
+      }),
+      prisma.talentApplicationActivity.create({
+        data: {
+          applicationId: application.id,
+          action: 'أرسل المتقدم الملف للمراجعة',
+          newValue: JSON.stringify({ submittedAt: now, version: attachments._workflow.version }),
+        },
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: 'تم إرسال الملف للمراجعة وتجميد التعديلات.',
+      current: publicCurrent({ ...application, status: 'under_review' }, attachments),
+    });
+  }
+
   if (req.method === 'DELETE') {
     const applicationNumber = typeof req.query.applicationNumber === 'string' ? req.query.applicationNumber : '';
     const token = typeof req.query.token === 'string' ? req.query.token : '';
@@ -210,6 +272,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!rule) return res.status(400).json({ success: false, message: 'نوع المرفق غير صالح.' });
 
     const attachments = parseAttachments(application.attachments);
+    const workflow = attachments._workflow && typeof attachments._workflow === 'object'
+      ? attachments._workflow
+      : {};
+    if (workflow.submitted === true) {
+      return res.status(409).json({ success: false, message: 'الملف مُرسل للمراجعة ولا يمكن تعديل المرفقات إلا بعد إعادة فتحه من الإدارة.' });
+    }
     const meta = attachments._meta && typeof attachments._meta === 'object' ? attachments._meta : {};
     const removed: string[] = [];
 
@@ -285,7 +353,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const application = await resolveApplication(applicationNumber, token);
-        if (!application) throw new Error('رابط الاستكمال غير صالح أو منتهي الصلاحية.');
+        if (!application) throw new Error('يجب تأكيد البريد الإلكتروني أولًا أو طلب رابط استكمال جديد.');
+        const attachments = parseAttachments(application.attachments);
+        const workflow = attachments._workflow && typeof attachments._workflow === 'object'
+          ? attachments._workflow
+          : {};
+        if (workflow.submitted === true) {
+          throw new Error('الملف مُرسل للمراجعة ولا يمكن تعديل المرفقات إلا بعد إعادة فتحه من الإدارة.');
+        }
         await enforceUploadRateLimit(application.id);
 
         return {

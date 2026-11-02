@@ -793,30 +793,54 @@ export default function AdminTalentDetailPage() {
             ) : (
               <div className="space-y-4">
                 {attachments.profile_photo && (
-                  <AttachmentLink label="صورة شخصية" url={attachments.profile_photo} />
+                  <AdminAttachmentLink
+                    applicationId={talent.id}
+                    field="profile_photo"
+                    label="صورة شخصية"
+                  />
                 )}
                 {attachments.work_photos && Array.isArray(attachments.work_photos) && attachments.work_photos.length > 0 && (
                   <div>
                     <p className="text-white/60 text-xs mb-2">صور الأعمال</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {attachments.work_photos.map((url: string, idx: number) => (
-                        <AttachmentLink key={idx} label={`صورة #${idx + 1}`} url={url} />
+                      {attachments.work_photos.map((_url: string, idx: number) => (
+                        <AdminAttachmentLink
+                          key={idx}
+                          applicationId={talent.id}
+                          field="work_photos"
+                          index={idx}
+                          label={`صورة #${idx + 1}`}
+                        />
                       ))}
                     </div>
                   </div>
                 )}
                 {attachments.work_video && (
-                  <AttachmentLink label="فيديو الأعمال" url={attachments.work_video} />
+                  <AdminAttachmentLink
+                    applicationId={talent.id}
+                    field="work_video"
+                    label="فيديو الأعمال"
+                  />
                 )}
                 {attachments.cv && (
-                  <AttachmentLink label="السيرة الذاتية (CV)" url={attachments.cv} />
+                  <AdminAttachmentLink
+                    applicationId={talent.id}
+                    field="cv"
+                    label="السيرة الذاتية (CV)"
+                  />
                 )}
                 {attachments.documents && Array.isArray(attachments.documents) && attachments.documents.length > 0 && (
                   <div>
                     <p className="text-white/60 text-xs mb-2">المؤهلات والشهادات والوثائق</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {attachments.documents.map((url: string, idx: number) => (
-                        <AttachmentLink key={idx} label={`وثيقة #${idx + 1}`} url={url} />
+                      {attachments.documents.map((_url: string, idx: number) => (
+                        <AdminAttachmentLink
+                          key={idx}
+                          applicationId={talent.id}
+                          field="documents"
+                          index={idx}
+                          label={`وثيقة #${idx + 1}`}
+                        />
                       ))}
                     </div>
                   </div>
@@ -1032,6 +1056,36 @@ function InfoItem({
         </p>
       </div>
     </div>
+  );
+}
+
+function AdminAttachmentLink({
+  applicationId,
+  field,
+  label,
+  index,
+}: {
+  applicationId: string;
+  field: 'profile_photo' | 'work_photos' | 'work_video' | 'cv' | 'documents';
+  label: string;
+  index?: number;
+}) {
+  const params = new URLSearchParams({ field });
+  if (typeof index === 'number') params.set('index', String(index));
+  const url = `/api/admin/talents/${applicationId}/attachment?${params.toString()}`;
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`فتح ${label}`}
+      aria-label={`فتح ${label}`}
+      className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer"
+    >
+      <span className="text-white/80 text-sm">{label}</span>
+      <ExternalLink className="w-4 h-4 text-afaq-teal" />
+    </a>
   );
 }
 

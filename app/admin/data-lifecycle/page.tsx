@@ -35,6 +35,9 @@ type Report = {
     scannedBytes: number;
     referencedCount: number;
     orphanCount: number;
+    stableCount: number;
+    recentCount: number;
+    graceHours: number;
     truncated: boolean;
     candidates: Array<{
       pathname: string;
@@ -42,6 +45,8 @@ type Report = {
       uploadedAt: string;
       url: string;
       ageDays: number;
+      ageHours: number;
+      stable: boolean;
     }>;
   };
 };
@@ -159,8 +164,9 @@ export default function DataLifecyclePage() {
               <p className="text-xl font-bold text-white mt-1">{dryRun.retention.candidateCount}</p>
             </div>
             <div className="rounded-lg bg-white/5 border border-white/10 p-4">
-              <p className="text-white/40 text-xs">Orphan candidates</p>
+              <p className="text-white/40 text-xs">Orphan candidates المستقرة</p>
               <p className="text-xl font-bold text-white mt-1">{dryRun.orphanBlobs.candidateCount}</p>
+              <p className="text-xs text-white/40 mt-1">حديث مستبعد: {dryRun.orphanBlobs.recentCount || 0}</p>
             </div>
             <div className="rounded-lg bg-white/5 border border-white/10 p-4">
               <p className="text-white/40 text-xs">حجم Orphans المحتمل</p>
@@ -235,8 +241,11 @@ export default function DataLifecyclePage() {
               <p className="text-2xl font-bold text-white mt-2">{mb(report.orphanBlobs.scannedBytes)} MB</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-              <p className="text-white/50 text-sm">Orphan Blobs المحتملة</p>
+              <p className="text-white/50 text-sm">Orphan Blobs المرصودة</p>
               <p className="text-2xl font-bold text-white mt-2">{report.orphanBlobs.orphanCount}</p>
+              <p className="text-xs text-white/40 mt-1">
+                مستقر: {report.orphanBlobs.stableCount} • حديث مستبعد: {report.orphanBlobs.recentCount}
+              </p>
             </div>
           </section>
 
@@ -263,6 +272,7 @@ export default function DataLifecyclePage() {
                       <th className="text-right px-4 py-3">المسار</th>
                       <th className="text-right px-4 py-3">الحجم</th>
                       <th className="text-right px-4 py-3">العمر</th>
+                      <th className="text-right px-4 py-3">الحالة</th>
                       <th className="text-right px-4 py-3">تاريخ الرفع</th>
                     </tr>
                   </thead>
@@ -272,6 +282,11 @@ export default function DataLifecyclePage() {
                         <td className="px-4 py-3 text-white/80 max-w-[460px] truncate" dir="ltr">{item.pathname}</td>
                         <td className="px-4 py-3 text-white/60">{mb(item.size)} MB</td>
                         <td className="px-4 py-3 text-white/60">{item.ageDays} يوم</td>
+                        <td className="px-4 py-3">
+                          <span className={item.stable ? 'text-green-400 text-xs' : 'text-amber-300 text-xs'}>
+                            {item.stable ? 'مستقر' : `حديث — مهلة ${report.orphanBlobs.graceHours}س`}
+                          </span>
+                        </td>
                         <td className="px-4 py-3 text-white/60" dir="ltr">{new Date(item.uploadedAt).toLocaleString('ar-SA')}</td>
                       </tr>
                     ))}

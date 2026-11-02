@@ -803,7 +803,7 @@ export default function AdminTalentDetailPage() {
                   <div>
                     <p className="text-white/60 text-xs mb-2">صور الأعمال</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {attachments.work_photos.map((url: string, idx: number) => (
+                      {attachments.work_photos.map((_url: string, idx: number) => (
                         <AdminAttachmentLink
                           key={idx}
                           applicationId={talent.id}
@@ -833,7 +833,7 @@ export default function AdminTalentDetailPage() {
                   <div>
                     <p className="text-white/60 text-xs mb-2">المؤهلات والشهادات والوثائق</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {attachments.documents.map((url: string, idx: number) => (
+                      {attachments.documents.map((_url: string, idx: number) => (
                         <AdminAttachmentLink
                           key={idx}
                           applicationId={talent.id}

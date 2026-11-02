@@ -235,10 +235,12 @@ export function buildApplicationReceivedEmail({
   name,
   applicationNumber,
   verifyUrl,
+  uploadUrl,
 }: {
   name: string;
   applicationNumber: string;
   verifyUrl?: string;
+  uploadUrl?: string;
 }): { subject: string; html: string; text: string } {
   const subject = `تم استلام طلبك في أفاق – ${applicationNumber}`;
   const html = `
@@ -259,6 +261,14 @@ export function buildApplicationReceivedEmail({
           <a href="${verifyUrl}" style="display: inline-block; padding: 12px 28px; background: #0ea5e9; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">تأكيد البريد الإلكتروني</a>
         </div>
         ` : ''}
+        ${uploadUrl ? `
+        <div style="margin: 28px 0; padding: 20px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
+          <p style="margin: 0 0 14px; font-weight: bold;">استكمل ملفك المهني</p>
+          <p style="margin: 0 0 18px; color: #475569; font-size: 14px;">يمكنك رفع السيرة الذاتية والوثائق والصور وفيديو الأعمال من الرابط الآمن التالي.</p>
+          <a href="${uploadUrl}" style="display: inline-block; padding: 12px 28px; background: #14b8a6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">رفع الوثائق والصور والفيديو</a>
+          <p style="margin: 12px 0 0; color: #64748b; font-size: 12px;">الرابط مخصص لطلبك ولا يُنصح بمشاركته مع الآخرين.</p>
+        </div>
+        ` : ''}
         <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
         <p style="font-size: 13px; color: #6b7280;">
           للتواصل: <a href="mailto:info@bonds-global.com" style="color: #0ea5e9;">info@bonds-global.com</a>
@@ -266,7 +276,7 @@ export function buildApplicationReceivedEmail({
       </div>
     </div>
   `;
-  const text = `مرحبًا ${name}،\n\nتم استلام طلبك في منصة أفاق بنجاح.\nرقم طلبك: ${applicationNumber}\n\nاحتفظ بهذا الرقم للرجوع إليه عند التواصل معنا.\n\n${verifyUrl ? `لتأكيد بريدك الإلكتروني: ${verifyUrl}\n\n` : ''}للتواصل: info@bonds-global.com`;
+  const text = `مرحبًا ${name}،\n\nتم استلام طلبك في منصة أفاق بنجاح.\nرقم طلبك: ${applicationNumber}\n\nاحتفظ بهذا الرقم للرجوع إليه عند التواصل معنا.\n\n${verifyUrl ? `لتأكيد بريدك الإلكتروني: ${verifyUrl}\n\n` : ''}${uploadUrl ? `لاستكمال الملف ورفع الوثائق والصور والفيديو: ${uploadUrl}\n\n` : ''}للتواصل: info@bonds-global.com`;
   return { subject, html, text };
 }
 

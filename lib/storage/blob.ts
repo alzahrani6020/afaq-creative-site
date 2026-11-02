@@ -5,7 +5,7 @@ import path from 'path';
 
 function safeExt(originalName: string): string {
   const ext = path.extname(originalName).toLowerCase();
-  const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp4', '.webm', '.pdf', '.doc', '.docx'];
+  const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp4', '.webm', '.mov', '.pdf', '.doc', '.docx'];
   return allowed.includes(ext) ? ext : '';
 }
 

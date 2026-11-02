@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function getSecret(): string {
   const secret = process.env.ADMIN_SESSION_SECRET;

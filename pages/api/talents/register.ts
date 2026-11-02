@@ -31,6 +31,7 @@ const allowedFiles: Record<string, string[]> = {
   'image/gif': ['.gif'],
   'video/mp4': ['.mp4'],
   'video/webm': ['.webm'],
+  'video/quicktime': ['.mov'],
   'application/pdf': ['.pdf'],
   'application/msword': ['.doc'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
@@ -91,6 +92,10 @@ function validateFileContent(buffer: Buffer, mimetype: string): boolean {
       return buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70;
     },
     'video/webm': (buf) => buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3,
+    'video/quicktime': (buf) => {
+      if (buf.length < 12) return false;
+      return buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70;
+    },
     'application/msword': (buf) => buf[0] === 0xd0 && buf[1] === 0xcf && buf[2] === 0x11 && buf[3] === 0xe0,
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': (buf) =>
       buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04,

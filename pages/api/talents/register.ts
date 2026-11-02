@@ -308,6 +308,19 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
       });
     }
 
+    const incomingFiles = req.files || {};
+    const incomingFileCount = Object.values(incomingFiles).reduce(
+      (total, entries) => total + (Array.isArray(entries) ? entries.length : 0),
+      0
+    );
+    if (incomingFileCount > 0) {
+      return res.status(400).json({
+        success: false,
+        code: 'FILES_REQUIRE_EMAIL_VERIFICATION',
+        message: 'يتم رفع المرفقات بعد تأكيد البريد الإلكتروني من رابط استكمال الملف.',
+      });
+    }
+
     const parsed = registerSchema.parse(body);
     const personal = personalSchema.parse(JSON.parse(parsed.personal));
     const consentRecordedAt = new Date().toISOString();

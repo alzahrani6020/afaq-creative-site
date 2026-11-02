@@ -105,6 +105,7 @@ interface PersonalInfo {
   email: string;
   social_link: string;
   privacy: boolean;
+  marketingConsent: boolean;
   country?: string;
 }
 
@@ -318,7 +319,7 @@ export function TalentHub() {
   const [location, setLocation] = useState<LocationInfo>({ ...SA_DEFAULT_LOCATION });
   const [sanaieeConsent, setSanaieeConsent] = useState(false);
   const [personal, setPersonal] = useState<PersonalInfo>({
-    full_name: '', phone: '', email: '', social_link: '', privacy: false, country: 'SA',
+    full_name: '', phone: '', email: '', social_link: '', privacy: false, marketingConsent: false, country: 'SA',
   });
   const [files, setFiles] = useState<Files>({
     profile_photo: null, work_photos: [], work_video: null, cv: null,
@@ -439,7 +440,7 @@ export function TalentHub() {
         }
         if (personal.email && !isValidEmail(personal.email)) nextErrors.email = 'أدخل بريدًا إلكترونيًا صحيحًا، مثال: name@example.com';
         if (personal.social_link && !isValidUrl(personal.social_link)) nextErrors.social_link = 'أدخل رابطًا صحيحًا، مثال: https://example.com';
-        if (!personal.privacy) nextErrors.privacy = 'الموافقة على سياسة الخصوصية مطلوبة';
+        if (!personal.privacy) nextErrors.privacy = 'الموافقة على الشروط والأحكام وسياسة الخصوصية مطلوبة';
         break;
     }
 
@@ -522,7 +523,7 @@ export function TalentHub() {
       } else if (!isValidEmail(personal.email)) {
         nextErrors.email = 'أدخل بريدًا إلكترونيًا صحيحًا، مثال: name@example.com';
       }
-      if (!personal.privacy) nextErrors.privacy = 'الموافقة على سياسة الخصوصية مطلوبة';
+      if (!personal.privacy) nextErrors.privacy = 'الموافقة على الشروط والأحكام وسياسة الخصوصية مطلوبة';
     }
     if (quickStep === 2) {
       if (!currentProfile.profileType) nextErrors.profileType = 'اختر تصنيفك';
@@ -909,10 +910,21 @@ export function TalentHub() {
                       className="mt-1 w-5 h-5 accent-afaq-gold rounded"
                     />
                     <span className="text-white/70 text-sm">
-                      أوافق على <a href="/terms" target="_blank" className="text-afaq-gold hover:underline">الشروط والأحكام</a> و<a href="/privacy" target="_blank" className="text-afaq-gold hover:underline">سياسة الخصوصية</a>
+                      أقر بأنني قرأت ووافقت على <a href="/terms" target="_blank" className="text-afaq-gold hover:underline">الشروط والأحكام</a> و<a href="/privacy" target="_blank" className="text-afaq-gold hover:underline">سياسة الخصوصية</a>، وأوافق على إنشاء وإدارة ملفي المهني ومعالجة بياناتي بالقدر اللازم لتقييم طلبي وترشيحي للفرص والبرامج المناسبة والتواصل معي بشأنها.
                     </span>
                   </label>
                   {errors.privacy && <p className="text-red-400 text-xs">{errors.privacy}</p>}
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={personal.marketingConsent}
+                      onChange={(e) => setPersonal({ ...personal, marketingConsent: e.target.checked })}
+                      className="mt-1 w-5 h-5 accent-afaq-gold rounded"
+                    />
+                    <span className="text-white/60 text-sm">
+                      أرغب في استقبال العروض والإعلانات والبرامج والفرص والرسائل التسويقية من آفاق، ويمكنني إلغاء الاشتراك في أي وقت. <span className="text-white/40">(اختياري)</span>
+                    </span>
+                  </label>
                 </div>
               )}
               {quickStep === 2 && (
@@ -1519,10 +1531,21 @@ export function TalentHub() {
                       className="mt-1 w-5 h-5 accent-afaq-gold rounded"
                     />
                     <span className="text-white/70 text-sm">
-                      أوافق على <a href="/terms" target="_blank" className="text-afaq-gold hover:underline">الشروط والأحكام</a> و<a href="/privacy" target="_blank" className="text-afaq-gold hover:underline">سياسة الخصوصية</a> وعلى معالجة بياناتي لأغراض التقييم وإدارة الطلب والربط بالفرص وفق ما توضحه السياسة.
+                      أقر بأنني قرأت ووافقت على <a href="/terms" target="_blank" className="text-afaq-gold hover:underline">الشروط والأحكام</a> و<a href="/privacy" target="_blank" className="text-afaq-gold hover:underline">سياسة الخصوصية</a>، وأوافق على إنشاء وإدارة ملفي المهني ومعالجة بياناتي بالقدر اللازم لتقييم طلبي وترشيحي للفرص والبرامج المناسبة والتواصل معي بشأنها.
                     </span>
                   </label>
                   {errors.privacy && <p className="text-red-400 text-xs mt-1">{errors.privacy}</p>}
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={personal.marketingConsent}
+                      onChange={(e) => setPersonal({ ...personal, marketingConsent: e.target.checked })}
+                      className="mt-1 w-5 h-5 accent-afaq-gold rounded"
+                    />
+                    <span className="text-white/60 text-sm">
+                      أرغب في استقبال العروض والإعلانات والبرامج والفرص والرسائل التسويقية من آفاق، ويمكنني إلغاء الاشتراك في أي وقت. <span className="text-white/40">(اختياري)</span>
+                    </span>
+                  </label>
                 </div>
               )}
 

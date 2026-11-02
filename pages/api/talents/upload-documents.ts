@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { prisma } from '@/lib/prisma';
 import { getStorage, extractStorageKey, isStorageUrl } from '@/lib/storage';
-import { verifyApplicantUploadToken } from '@/lib/applicant-upload-token';
+import { verifyApplicantUploadSessionToken } from '@/lib/applicant-upload-token';
 
 export const config = {
   api: { bodyParser: false },
@@ -78,12 +78,14 @@ async function readJsonBody(req: NextApiRequest): Promise<HandleUploadBody> {
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as HandleUploadBody;
 }
 
-async function resolveApplication(applicationNumber: string, token: string) {
-  if (!applicationNumber || !token) return null;
+async function resolveApplication(applicationNumber: string, req: NextApiRequest) {
+  if (!applicationNumber) return null;
+  const sessionToken = req.cookies?.afaq_applicant_upload_session || '';
+  if (!sessionToken) return null;
   const application = await prisma.talentApplication.findUnique({ where: { applicationNumber } });
   if (!application) return null;
   if (!application.emailVerified) return null;
-  if (!verifyApplicantUploadToken(token, application.id, application.applicationNumber)) return null;
+  if (!verifyApplicantUploadSessionToken(sessionToken, application.id, application.applicationNumber)) return null;
   return application;
 }
 
@@ -187,8 +189,7 @@ function publicCurrent(application: any, attachments: Record<string, any>) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     const applicationNumber = typeof req.query.applicationNumber === 'string' ? req.query.applicationNumber : '';
-    const token = typeof req.query.token === 'string' ? req.query.token : '';
-    const application = await resolveApplication(applicationNumber, token);
+    const application = await resolveApplication(applicationNumber, req);
     if (!application) return res.status(401).json({ success: false, message: 'الرابط غير صالح أو منتهي الصلاحية.' });
 
     const attachments = parseAttachments(application.attachments);
@@ -207,8 +208,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     const applicationNumber = typeof req.query.applicationNumber === 'string' ? req.query.applicationNumber : '';
-    const token = typeof req.query.token === 'string' ? req.query.token : '';
-    const application = await resolveApplication(applicationNumber, token);
+    const application = await resolveApplication(applicationNumber, req);
     if (!application) {
       return res.status(401).json({ success: false, message: 'يجب تأكيد البريد الإلكتروني أولًا أو طلب رابط استكمال جديد.' });
     }
@@ -262,10 +262,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'DELETE') {
     const applicationNumber = typeof req.query.applicationNumber === 'string' ? req.query.applicationNumber : '';
-    const token = typeof req.query.token === 'string' ? req.query.token : '';
     const field = typeof req.query.field === 'string' ? req.query.field : '';
     const indexRaw = typeof req.query.index === 'string' ? req.query.index : '';
-    const application = await resolveApplication(applicationNumber, token);
+    const application = await resolveApplication(applicationNumber, req);
     if (!application) return res.status(401).json({ success: false, message: 'الرابط غير صالح أو منتهي الصلاحية.' });
 
     const rule = fieldRules[field];
@@ -341,7 +340,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const applicationNumber = String(payload.applicationNumber || '');
-        const token = String(payload.token || '');
         const field = String(payload.field || '');
         const originalName = String(payload.originalName || '').slice(0, 240);
         const size = Number(payload.size || 0);
@@ -352,7 +350,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           throw new Error(`حجم الملف يتجاوز الحد المسموح (${Math.round(rule.maxBytes / 1024 / 1024)} MB).`);
         }
 
-        const application = await resolveApplication(applicationNumber, token);
+        const application = await resolveApplication(applicationNumber, req);
         if (!application) throw new Error('يجب تأكيد البريد الإلكتروني أولًا أو طلب رابط استكمال جديد.');
         const attachments = parseAttachments(application.attachments);
         const workflow = attachments._workflow && typeof attachments._workflow === 'object'

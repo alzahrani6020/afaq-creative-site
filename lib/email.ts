@@ -235,10 +235,12 @@ export function buildApplicationReceivedEmail({
   name,
   applicationNumber,
   verifyUrl,
+  uploadUrl,
 }: {
   name: string;
   applicationNumber: string;
   verifyUrl?: string;
+  uploadUrl?: string;
 }): { subject: string; html: string; text: string } {
   const subject = `تم استلام طلبك في أفاق – ${applicationNumber}`;
   const html = `
@@ -259,6 +261,14 @@ export function buildApplicationReceivedEmail({
           <a href="${verifyUrl}" style="display: inline-block; padding: 12px 28px; background: #0ea5e9; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">تأكيد البريد الإلكتروني</a>
         </div>
         ` : ''}
+        ${uploadUrl ? `
+        <div style="margin: 28px 0; padding: 20px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
+          <p style="margin: 0 0 14px; font-weight: bold;">استكمل ملفك المهني</p>
+          <p style="margin: 0 0 18px; color: #475569; font-size: 14px;">يمكنك رفع السيرة الذاتية والوثائق والصور وفيديو الأعمال من الرابط الآمن التالي.</p>
+          <a href="${uploadUrl}" style="display: inline-block; padding: 12px 28px; background: #14b8a6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">رفع الوثائق والصور والفيديو</a>
+          <p style="margin: 12px 0 0; color: #64748b; font-size: 12px;">الرابط مخصص لطلبك ولا يُنصح بمشاركته مع الآخرين.</p>
+        </div>
+        ` : ''}
         <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
         <p style="font-size: 13px; color: #6b7280;">
           للتواصل: <a href="mailto:info@bonds-global.com" style="color: #0ea5e9;">info@bonds-global.com</a>
@@ -266,11 +276,11 @@ export function buildApplicationReceivedEmail({
       </div>
     </div>
   `;
-  const text = `مرحبًا ${name}،\n\nتم استلام طلبك في منصة أفاق بنجاح.\nرقم طلبك: ${applicationNumber}\n\nاحتفظ بهذا الرقم للرجوع إليه عند التواصل معنا.\n\n${verifyUrl ? `لتأكيد بريدك الإلكتروني: ${verifyUrl}\n\n` : ''}للتواصل: info@bonds-global.com`;
+  const text = `مرحبًا ${name}،\n\nتم استلام طلبك في منصة أفاق بنجاح.\nرقم طلبك: ${applicationNumber}\n\nاحتفظ بهذا الرقم للرجوع إليه عند التواصل معنا.\n\n${verifyUrl ? `لتأكيد بريدك الإلكتروني: ${verifyUrl}\n\n` : ''}${uploadUrl ? `لاستكمال الملف ورفع الوثائق والصور والفيديو: ${uploadUrl}\n\n` : ''}للتواصل: info@bonds-global.com`;
   return { subject, html, text };
 }
 
-export function buildVerificationSuccessHtml(applicationNumber: string): string {
+export function buildVerificationSuccessHtml(applicationNumber: string, uploadUrl?: string): string {
   return `
     <!DOCTYPE html>
     <html lang="ar" dir="rtl">
@@ -291,7 +301,8 @@ export function buildVerificationSuccessHtml(applicationNumber: string): string 
         <h1>تم تأكيد بريدك الإلكتروني بنجاح</h1>
         <p>رقم طلبك:</p>
         <div class="number">${applicationNumber}</div>
-        <p>يمكنك الآن متابعة طلبك عند التواصل معنا.</p>
+        <p>تم تأكيد بريدك، ويمكنك استكمال ملفك الآن.</p>
+        ${uploadUrl ? `<a href="${uploadUrl}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#14b8a6;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">رفع الوثائق والصور والفيديو</a>` : ""}
       </div>
     </body>
     </html>
@@ -347,15 +358,18 @@ export function buildApplicationStatusEmail({
   applicationNumber,
   name,
   status,
+  uploadUrl,
 }: {
   applicationNumber: string;
   name?: string | null;
   status: string;
+  uploadUrl?: string;
 }): { subject: string; html: string; text: string } {
   const statusLabel = applicationStatusLabels[status] || status;
   const safeName = escapeHtml(name || 'المتقدم');
   const safeApplicationNumber = escapeHtml(applicationNumber);
   const safeStatus = escapeHtml(statusLabel);
+  const safeUploadUrl = uploadUrl ? escapeHtml(uploadUrl) : '';
   const subject = `تحديث حالة طلبك في أفاق – ${applicationNumber}`;
   const html = `
     <div dir="rtl" style="font-family: Arial, Tahoma, sans-serif; line-height: 1.7; color: #1a1a1a; max-width: 600px; margin: 0 auto;">
@@ -374,9 +388,11 @@ export function buildApplicationStatusEmail({
           <span style="color:#0ea5e9; font-weight:bold;">${safeStatus}</span>
         </p>
         <p>سنواصل التواصل معك عبر بيانات الاتصال المسجلة عند الحاجة.</p>
+        ${safeUploadUrl ? `<div style="margin:24px 0;text-align:center;"><a href="${safeUploadUrl}" style="display:inline-block;padding:12px 24px;background:#14b8a6;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">رفع الوثائق والصور والفيديو</a></div>` : ''}
       </div>
     </div>
   `;
-  const text = `مرحبًا ${name || 'المتقدم'}،\n\nتم تحديث حالة طلبك في منصة أفاق.\nرقم الطلب: ${applicationNumber}\nالحالة الحالية: ${statusLabel}\n\nسنواصل التواصل معك عبر بيانات الاتصال المسجلة عند الحاجة.`;
+  const uploadText = uploadUrl ? `\n\nرفع الوثائق والصور والفيديو: ${uploadUrl}` : '';
+  const text = `مرحبًا ${name || 'المتقدم'}،\n\nتم تحديث حالة طلبك في منصة أفاق.\nرقم الطلب: ${applicationNumber}\nالحالة الحالية: ${statusLabel}\n\nسنواصل التواصل معك عبر بيانات الاتصال المسجلة عند الحاجة.${uploadText}`;
   return { subject, html, text };
 }

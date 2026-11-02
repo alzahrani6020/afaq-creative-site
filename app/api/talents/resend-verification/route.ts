@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail, buildApplicationReceivedEmail, buildBaseUrl } from '@/lib/email';
 import { getClientIp } from '@/lib/admin-auth';
+import { createApplicantUploadToken } from '@/lib/applicant-upload-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,27 +58,23 @@ export async function POST(req: NextRequest) {
       return genericResponse;
     }
 
-    if (application.emailVerified) {
-      return NextResponse.json(
-        { success: true, message: 'البريد الإلكتروني مؤكد بالفعل.' },
-        { status: 200 }
-      );
+    let token: string | undefined;
+    if (!application.emailVerified) {
+      // Invalidate any existing unused tokens for this application.
+      await prisma.emailVerificationToken.updateMany({
+        where: { applicationId: application.id, used: false },
+        data: { used: true },
+      });
+
+      token = crypto.randomBytes(32).toString('hex');
+      await prisma.emailVerificationToken.create({
+        data: {
+          token,
+          applicationId: application.id,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      });
     }
-
-    // Invalidate any existing unused tokens for this application.
-    await prisma.emailVerificationToken.updateMany({
-      where: { applicationId: application.id, used: false },
-      data: { used: true },
-    });
-
-    const token = crypto.randomBytes(32).toString('hex');
-    await prisma.emailVerificationToken.create({
-      data: {
-        token,
-        applicationId: application.id,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      },
-    });
 
     let emailStatus: 'pending' | 'sent' | 'failed' = 'pending';
     let emailError: string | null = null;
@@ -85,11 +82,14 @@ export async function POST(req: NextRequest) {
 
     try {
       const personal = JSON.parse(application.personal || '{}');
-      const verifyUrl = `${buildBaseUrl()}/api/talents/verify-email?token=${token}`;
+      const verifyUrl = token ? `${buildBaseUrl()}/api/talents/verify-email?token=${token}` : undefined;
+      const uploadToken = createApplicantUploadToken(application.id, application.applicationNumber);
+      const uploadUrl = `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(application.applicationNumber)}&token=${encodeURIComponent(uploadToken)}`;
       const { subject, html, text } = buildApplicationReceivedEmail({
         name: personal.full_name || 'متقدم',
         applicationNumber: application.applicationNumber,
         verifyUrl,
+        uploadUrl,
       });
       const result = await sendTransactionalEmail({ to: application.email, subject, html, text });
       if (result.success) {
@@ -132,7 +132,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: true, message: 'تم إرسال رسالة التأكيد.' },
+      {
+        success: true,
+        message: application.emailVerified
+          ? 'تم إرسال رابط استكمال الملف إلى بريدك الإلكتروني.'
+          : 'تم إرسال رسالة التأكيد ورابط استكمال الملف.',
+      },
       { status: 200 }
     );
   } catch (error) {

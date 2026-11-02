@@ -787,6 +787,16 @@ export default function AdminTalentDetailPage() {
                 {attachments.cv && (
                   <AttachmentLink label="السيرة الذاتية (CV)" url={attachments.cv} />
                 )}
+                {attachments.documents && Array.isArray(attachments.documents) && attachments.documents.length > 0 && (
+                  <div>
+                    <p className="text-white/60 text-xs mb-2">المؤهلات والشهادات والوثائق</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {attachments.documents.map((url: string, idx: number) => (
+                        <AttachmentLink key={idx} label={`وثيقة #${idx + 1}`} url={url} />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {linkFields.some((f) => attachments[f.key]) && (
                   <div className="pt-4 border-t border-white/10">

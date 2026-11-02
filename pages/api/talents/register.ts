@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
+import { createEmailVerificationCredential } from '@/lib/applicant-email-verification';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getStorage, extractStorageKey, isStorageUrl } from '@/lib/storage';
@@ -455,12 +456,13 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
         }
 
         if (email) {
-          verificationToken = crypto.randomBytes(32).toString('hex');
+          const credential = createEmailVerificationCredential();
+          verificationToken = credential.token;
           await tx.emailVerificationToken.create({
             data: {
-              token: verificationToken,
+              token: credential.token,
               applicationId: app.id,
-              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+              expiresAt: credential.expiresAt,
             },
           });
         }
@@ -482,13 +484,12 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
     if (email && verificationToken) {
       try {
         const verifyUrl = `${buildBaseUrl()}/api/talents/verify-email?token=${verificationToken}`;
-        const uploadToken = createApplicantUploadToken(application.id, application.applicationNumber);
-        const uploadUrl = `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(application.applicationNumber)}&token=${encodeURIComponent(uploadToken)}`;
+        const verificationCode = verificationToken.split('.')[0];
         const { subject, html, text } = buildApplicationReceivedEmail({
           name: personal.full_name,
           applicationNumber: application.applicationNumber,
           verifyUrl,
-          uploadUrl,
+          verificationCode,
         });
         const result = await sendTransactionalEmail({ to: email, subject, html, text });
         if (result.success) {

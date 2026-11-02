@@ -27,6 +27,8 @@ type CurrentState = {
   documents: CurrentFile[];
   checklist: {
     status: 'complete' | 'incomplete';
+    submitted?: boolean;
+    submittedAt?: string | null;
     required: ChecklistItem[];
     recommended: ChecklistItem[];
   };
@@ -51,6 +53,7 @@ function ApplicantUploadPageContent() {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState<Record<string, number>>({});
+  const [submittingProfile, setSubmittingProfile] = useState(false);
 
   const query = useMemo(
     () => new URLSearchParams({ applicationNumber, token }).toString(),
@@ -170,6 +173,26 @@ function ApplicantUploadPageContent() {
     }
   };
 
+  const submitProfile = async () => {
+    if (!current?.checklist || current.checklist.status !== 'complete') {
+      setMessage('استكمل المتطلبات الأساسية قبل إرسال الملف للمراجعة.');
+      return;
+    }
+    setSubmittingProfile(true);
+    setMessage('');
+    try {
+      const res = await fetch(`/api/talents/upload-documents?${query}`, { method: 'PATCH' });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || 'تعذر إرسال الملف للمراجعة.');
+      setCurrent(json.current || current);
+      setMessage(json.message || 'تم إرسال الملف للمراجعة.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'تعذر إرسال الملف للمراجعة.');
+    } finally {
+      setSubmittingProfile(false);
+    }
+  };
+
   if (loading) {
     return (
       <main className="min-h-screen bg-afaq-bg flex items-center justify-center">
@@ -258,6 +281,12 @@ function ApplicantUploadPageContent() {
             ))}
           </div>
 
+          {current?.checklist?.submitted ? (
+            <div className="mb-6 rounded-2xl border border-green-500/20 bg-green-500/10 p-4 text-green-200 text-sm">
+              تم إرسال الملف للمراجعة، وتم تجميد التعديلات. إذا طلبت الإدارة بيانات إضافية فسيتم إعادة فتح الملف.
+            </div>
+          ) : null}
+
           <form onSubmit={submit} className="space-y-5">
             <FileField name="cv" label="السيرة الذاتية" accept=".pdf,.doc,.docx" />
             <FileField
@@ -308,13 +337,27 @@ function ApplicantUploadPageContent() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || Boolean(current?.checklist?.submitted)}
               className="w-full rounded-xl bg-afaq-gold text-black font-bold py-3 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <UploadCloud className="w-5 h-5" />}
               {submitting ? 'جارٍ رفع الملفات...' : 'حفظ المرفقات'}
             </button>
           </form>
+
+          <button
+            type="button"
+            onClick={submitProfile}
+            disabled={
+              submittingProfile ||
+              current?.checklist?.status !== 'complete' ||
+              Boolean(current?.checklist?.submitted)
+            }
+            className="mt-4 w-full rounded-xl border border-afaq-teal/40 bg-afaq-teal/10 py-3 font-bold text-afaq-teal disabled:opacity-40 flex items-center justify-center gap-2"
+          >
+            {submittingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+            {current?.checklist?.submitted ? 'تم إرسال الملف للمراجعة' : 'إرسال الملف النهائي للمراجعة'}
+          </button>
         </div>
       </div>
     </main>

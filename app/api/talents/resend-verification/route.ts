@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { createEmailVerificationCredential } from '@/lib/applicant-email-verification';
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail, buildApplicationReceivedEmail, buildBaseUrl } from '@/lib/email';
 import { getClientIp } from '@/lib/admin-auth';
@@ -66,12 +66,13 @@ export async function POST(req: NextRequest) {
         data: { used: true },
       });
 
-      token = crypto.randomBytes(32).toString('hex');
+      const credential = createEmailVerificationCredential();
+      token = credential.token;
       await prisma.emailVerificationToken.create({
         data: {
-          token,
+          token: credential.token,
           applicationId: application.id,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          expiresAt: credential.expiresAt,
         },
       });
     }
@@ -83,12 +84,18 @@ export async function POST(req: NextRequest) {
     try {
       const personal = JSON.parse(application.personal || '{}');
       const verifyUrl = token ? `${buildBaseUrl()}/api/talents/verify-email?token=${token}` : undefined;
-      const uploadToken = createApplicantUploadToken(application.id, application.applicationNumber);
-      const uploadUrl = `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(application.applicationNumber)}&token=${encodeURIComponent(uploadToken)}`;
+      const verificationCode = token ? token.split('.')[0] : undefined;
+      const uploadToken = application.emailVerified
+        ? createApplicantUploadToken(application.id, application.applicationNumber)
+        : undefined;
+      const uploadUrl = uploadToken
+        ? `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(application.applicationNumber)}&token=${encodeURIComponent(uploadToken)}`
+        : undefined;
       const { subject, html, text } = buildApplicationReceivedEmail({
         name: personal.full_name || 'متقدم',
         applicationNumber: application.applicationNumber,
         verifyUrl,
+        verificationCode,
         uploadUrl,
       });
       const result = await sendTransactionalEmail({ to: application.email, subject, html, text });
@@ -136,7 +143,7 @@ export async function POST(req: NextRequest) {
         success: true,
         message: application.emailVerified
           ? 'تم إرسال رابط استكمال الملف إلى بريدك الإلكتروني.'
-          : 'تم إرسال رسالة التأكيد ورابط استكمال الملف.',
+          : 'تم إرسال رسالة تأكيد البريد ورمز التحقق.',
       },
       { status: 200 }
     );

@@ -11,10 +11,13 @@ export async function GET(req: NextRequest) {
     const token = searchParams.get('token');
 
     if (!token) {
-      return new NextResponse(buildVerificationErrorHtml('الرابط غير صالح أو انتهت صلاحيته.'), {
+      const invalid = new NextResponse(buildVerificationErrorHtml('الرابط غير صالح أو انتهت صلاحيته.'), {
         status: 400,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
+      invalid.headers.set('Cache-Control', 'no-store');
+      invalid.headers.set('Referrer-Policy', 'no-referrer');
+      return invalid;
     }
 
     const record = await prisma.emailVerificationToken.findUnique({
@@ -30,8 +33,8 @@ export async function GET(req: NextRequest) {
     }
 
     await prisma.$transaction([
-      prisma.emailVerificationToken.update({
-        where: { id: record.id },
+      prisma.emailVerificationToken.updateMany({
+        where: { applicationId: record.applicationId, used: false },
         data: { used: true },
       }),
       prisma.talentApplication.update({
@@ -46,10 +49,13 @@ export async function GET(req: NextRequest) {
 
     const uploadToken = createApplicantUploadToken(record.application.id, record.application.applicationNumber);
     const uploadUrl = `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(record.application.applicationNumber)}&token=${encodeURIComponent(uploadToken)}`;
-    return new NextResponse(buildVerificationSuccessHtml(record.application.applicationNumber, uploadUrl), {
+    const success = new NextResponse(buildVerificationSuccessHtml(record.application.applicationNumber, uploadUrl), {
       status: 200,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
+    success.headers.set('Cache-Control', 'no-store');
+    success.headers.set('Referrer-Policy', 'no-referrer');
+    return success;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Email verification error:', message);

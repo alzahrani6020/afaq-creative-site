@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { buildVerificationSuccessHtml, buildVerificationErrorHtml } from '@/lib/email';
+import { buildVerificationSuccessHtml, buildVerificationErrorHtml, buildBaseUrl } from '@/lib/email';
+import { createApplicantUploadToken } from '@/lib/applicant-upload-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,9 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    return new NextResponse(buildVerificationSuccessHtml(record.application.applicationNumber), {
+    const uploadToken = createApplicantUploadToken(record.application.id, record.application.applicationNumber);
+    const uploadUrl = `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(record.application.applicationNumber)}&token=${encodeURIComponent(uploadToken)}`;
+    return new NextResponse(buildVerificationSuccessHtml(record.application.applicationNumber, uploadUrl), {
       status: 200,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });

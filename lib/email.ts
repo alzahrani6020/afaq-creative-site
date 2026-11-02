@@ -392,7 +392,8 @@ export function buildApplicationStatusEmail({
       </div>
     </div>
   `;
-  const text = `مرحبًا ${name || 'المتقدم'}،\n\nتم تحديث حالة طلبك في منصة أفاق.\nرقم الطلب: ${applicationNumber}\nالحالة الحالية: ${statusLabel}\n\nسنواصل التواصل معك عبر بيانات الاتصال المسجلة عند الحاجة.${uploadUrl ? `\n\nرفع الوثائق والصور والفيديو: ${uploadUrl}` : ''}`;
+  const uploadText = uploadUrl ? `\n\nرفع الوثائق والصور والفيديو: ${uploadUrl}` : '';
+  const text = `مرحبًا ${name || 'المتقدم'}،\n\nتم تحديث حالة طلبك في منصة أفاق.\nرقم الطلب: ${applicationNumber}\nالحالة الحالية: ${statusLabel}\n\nسنواصل التواصل معك عبر بيانات الاتصال المسجلة عند الحاجة.${uploadText}`;
   return { subject, html, text };
 }: {
   applicationNumber: string;

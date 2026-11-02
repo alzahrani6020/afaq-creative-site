@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
 
     const referenced = new Set<string>();
     const statusSummary: Record<string, { count: number; oldestAgeDays: number; policyDays: number | null; candidates: number }> = {};
+    let legalHoldCount = 0;
     const retentionCandidates: Array<{
       id: string;
       applicationNumber: string;
@@ -94,6 +95,12 @@ export async function GET(req: NextRequest) {
       const refs = collectReferencedPathnames(attachments);
       refs.forEach((pathname) => referenced.add(pathname));
 
+      const workflow = attachments._workflow && typeof attachments._workflow === 'object'
+        ? attachments._workflow
+        : {};
+      const legalHold = workflow.legalHold === true;
+      if (legalHold) legalHoldCount += 1;
+
       const status = application.status;
       const age = ageDays(application.updatedAt || application.createdAt);
       const policy = policyDays(status);
@@ -107,7 +114,7 @@ export async function GET(req: NextRequest) {
       summary.oldestAgeDays = Math.max(summary.oldestAgeDays, age);
       summary.policyDays = policy;
 
-      if (policy !== null && age >= policy) {
+      if (policy !== null && age >= policy && !legalHold) {
         summary.candidates += 1;
         retentionCandidates.push({
           id: application.id,
@@ -178,6 +185,7 @@ export async function GET(req: NextRequest) {
       deletionEnabled: false,
       retention: {
         policyConfigured: Object.values(statusSummary).some((item) => item.policyDays !== null),
+        legalHoldCount,
         envKeys: POLICY_ENV,
         statusSummary,
         candidates: retentionCandidates.slice(0, 500),

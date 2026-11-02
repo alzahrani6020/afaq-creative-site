@@ -505,6 +505,48 @@ export default function AdminTalentDetailPage() {
                     </div>
                   </div>
                 )}
+
+                <div className="mt-6 pt-6 border-t border-white/10">
+                  <h3 className="text-sm font-medium text-white/70 mb-3">الموافقات المسجلة</h3>
+                  {personal.consentEvidence?.core ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                        <p className="text-white/50 text-xs">الموافقة الأساسية</p>
+                        <p className="text-green-400 text-sm font-medium mt-1">
+                          {personal.consentEvidence.core.accepted ? 'موافق' : 'غير موافق'}
+                        </p>
+                        <p className="text-white/40 text-xs mt-1">
+                          {personal.consentEvidence.core.recordedAt
+                            ? new Date(personal.consentEvidence.core.recordedAt).toLocaleString('ar-SA')
+                            : '—'}
+                        </p>
+                      </div>
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                        <p className="text-white/50 text-xs">التسويق المباشر</p>
+                        <p className={`text-sm font-medium mt-1 ${personal.consentEvidence.marketing?.accepted ? 'text-green-400' : 'text-white/60'}`}>
+                          {personal.consentEvidence.marketing?.accepted ? 'موافق' : 'غير موافق'}
+                        </p>
+                        <p className="text-white/40 text-xs mt-1">
+                          {personal.consentEvidence.marketing?.recordedAt
+                            ? new Date(personal.consentEvidence.marketing.recordedAt).toLocaleString('ar-SA')
+                            : '—'}
+                        </p>
+                      </div>
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                        <p className="text-white/50 text-xs">إصدار الشروط</p>
+                        <p className="text-white text-sm font-medium mt-1">{personal.consentEvidence.core.termsVersion || '—'}</p>
+                      </div>
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                        <p className="text-white/50 text-xs">إصدار سياسة الخصوصية</p>
+                        <p className="text-white text-sm font-medium mt-1">{personal.consentEvidence.core.privacyVersion || '—'}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-white/40 text-sm">
+                      هذا الطلب أُنشئ قبل تفعيل سجل الموافقات التفصيلي، ولا توجد له بيانات موافقة تفصيلية محفوظة.
+                    </p>
+                  )}
+                </div>
               </>
             ) : (
               <div className="space-y-4">

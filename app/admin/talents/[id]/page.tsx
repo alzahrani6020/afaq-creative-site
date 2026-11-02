@@ -21,6 +21,7 @@ import {
   Copy,
   MessageCircle,
   Trash2,
+  ShieldAlert,
   Pencil,
   X,
 } from 'lucide-react';
@@ -292,6 +293,32 @@ export default function AdminTalentDetailPage() {
     }
   };
 
+  const handleToggleLegalHold = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/talents/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ legalHold: !legalHold }),
+      });
+      const json = await res.json();
+      if (res.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (!res.ok || !json.success) {
+        setError(json.message || 'تعذر تحديث الحجز القانوني.');
+        return;
+      }
+      await fetchTalent();
+    } catch {
+      setError('حدث خطأ أثناء تحديث الحجز القانوني.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!talent || deleteConfirmText !== talent.applicationNumber) return;
     setSaving(true);
@@ -350,6 +377,8 @@ export default function AdminTalentDetailPage() {
 
   const personal = parseJson(talent.personal);
   const attachments = parseJson(talent.attachments);
+  const workflow = attachments._workflow && typeof attachments._workflow === 'object' ? attachments._workflow : {};
+  const legalHold = workflow.legalHold === true;
   const serviceAreaList = parseJsonArray(talent.serviceArea);
   const workPlaceList = parseJsonArray(talent.workPlace);
 
@@ -411,6 +440,12 @@ export default function AdminTalentDetailPage() {
                 {talent.adminNotified && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-afaq-gold/10 text-afaq-gold border border-afaq-gold/20">
                     تم إشعار الإدارة
+                  </span>
+                )}
+                {legalHold && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-red-500/10 text-red-300 border border-red-500/20">
+                    <ShieldAlert className="w-3 h-3" />
+                    حجز قانوني
                   </span>
                 )}
                 {talent.sanaieePlatformConsent && (
@@ -915,6 +950,21 @@ export default function AdminTalentDetailPage() {
             <h2 className="text-lg font-bold text-white mb-4">إدارة الطلب</h2>
 
             <button
+              onClick={handleToggleLegalHold}
+              disabled={saving}
+              title={legalHold ? 'إلغاء الحجز القانوني' : 'تفعيل الحجز القانوني'}
+              aria-label={legalHold ? 'إلغاء الحجز القانوني' : 'تفعيل الحجز القانوني'}
+              className={`w-full mb-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border transition-colors disabled:opacity-40 ${
+                legalHold
+                  ? 'border-red-500/30 text-red-300 bg-red-500/10 hover:bg-red-500/20'
+                  : 'border-white/15 text-white/70 hover:bg-white/5'
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4" />
+              {legalHold ? 'إلغاء الحجز القانوني' : 'تفعيل الحجز القانوني'}
+            </button>
+
+            <button
               onClick={handleSendUploadLink}
               disabled={sendingUploadLink || !talent.emailVerified}
               title="إرسال رابط استكمال جديد"
@@ -932,6 +982,7 @@ export default function AdminTalentDetailPage() {
             {!showDeleteConfirm ? (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
+              disabled={legalHold}
                 title="حذف الطلب"
                 aria-label="حذف الطلب"
                 className="w-full flex items-center cursor-pointer justify-center gap-2 px-4 py-2.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"

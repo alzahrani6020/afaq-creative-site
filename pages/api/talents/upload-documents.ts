@@ -3,18 +3,22 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { prisma } from '@/lib/prisma';
 import { getStorage, extractStorageKey, isStorageUrl } from '@/lib/storage';
 import { verifyApplicantUploadSessionToken } from '@/lib/applicant-upload-token';
+import path from 'path';
 
 export const config = {
   api: { bodyParser: false },
 };
 
-const fieldRules: Record<string, { types: string[]; maxBytes: number; multiple: boolean; limit: number; label: string }> = {
+const MAX_TOTAL_UPLOAD_BYTES = 500 * 1024 * 1024;
+
+const fieldRules: Record<string, { types: string[]; maxBytes: number; multiple: boolean; limit: number; label: string; extensions: string[] }> = {
   profile_photo: {
     types: ['image/jpeg', 'image/png', 'image/webp'],
     maxBytes: 10 * 1024 * 1024,
     multiple: false,
     limit: 1,
     label: 'الصورة الشخصية',
+    extensions: ['.jpg', '.jpeg', '.png', '.webp'],
   },
   work_photos: {
     types: ['image/jpeg', 'image/png', 'image/webp'],
@@ -22,6 +26,7 @@ const fieldRules: Record<string, { types: string[]; maxBytes: number; multiple: 
     multiple: true,
     limit: 10,
     label: 'صور الأعمال',
+    extensions: ['.jpg', '.jpeg', '.png', '.webp'],
   },
   work_video: {
     types: ['video/mp4', 'video/webm', 'video/quicktime'],
@@ -29,6 +34,7 @@ const fieldRules: Record<string, { types: string[]; maxBytes: number; multiple: 
     multiple: false,
     limit: 1,
     label: 'فيديو الأعمال',
+    extensions: ['.mp4', '.webm', '.mov'],
   },
   cv: {
     types: [
@@ -40,6 +46,7 @@ const fieldRules: Record<string, { types: string[]; maxBytes: number; multiple: 
     multiple: false,
     limit: 1,
     label: 'السيرة الذاتية',
+    extensions: ['.pdf', '.doc', '.docx'],
   },
   documents: {
     types: [
@@ -54,8 +61,85 @@ const fieldRules: Record<string, { types: string[]; maxBytes: number; multiple: 
     multiple: true,
     limit: 10,
     label: 'المؤهلات والشهادات والوثائق',
+    extensions: ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp'],
   },
 };
+
+function metadataTotalBytes(attachments: Record<string, any>): number {
+  const meta = attachments._meta && typeof attachments._meta === 'object' ? attachments._meta : {};
+  let total = 0;
+  for (const field of Object.keys(fieldRules)) {
+    const value = meta[field];
+    if (Array.isArray(value)) {
+      for (const item of value) total += Math.max(0, Number(item?.size || 0));
+    } else if (value && typeof value === 'object') {
+      total += Math.max(0, Number(value.size || 0));
+    }
+  }
+  return total;
+}
+
+function existingFieldBytes(attachments: Record<string, any>, field: string): number {
+  const meta = attachments._meta && typeof attachments._meta === 'object' ? attachments._meta : {};
+  const value = meta[field];
+  if (Array.isArray(value)) {
+    return value.reduce((sum: number, item: any) => sum + Math.max(0, Number(item?.size || 0)), 0);
+  }
+  return value && typeof value === 'object' ? Math.max(0, Number(value.size || 0)) : 0;
+}
+
+function validateDeclaredFile(field: string, originalName: string, size: number) {
+  const rule = fieldRules[field];
+  if (!rule) throw new Error('نوع المرفق غير مسموح.');
+  if (!Number.isFinite(size) || size <= 0 || size > rule.maxBytes) {
+    throw new Error(`حجم الملف يتجاوز الحد المسموح (${Math.round(rule.maxBytes / 1024 / 1024)} MB).`);
+  }
+  const ext = path.extname(originalName).toLowerCase();
+  if (!rule.extensions.includes(ext)) {
+    throw new Error('امتداد الملف لا يطابق نوع المرفق المسموح.');
+  }
+  return rule;
+}
+
+function hasExpectedSignature(buffer: Buffer, contentType: string): boolean {
+  if (buffer.length < 12) return false;
+  switch (contentType) {
+    case 'image/jpeg':
+      return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    case 'image/png':
+      return buffer.subarray(0, 8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]));
+    case 'image/webp':
+      return buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+    case 'application/pdf':
+      return buffer.subarray(0, 5).toString('ascii') === '%PDF-';
+    case 'application/msword':
+      return buffer.subarray(0, 4).equals(Buffer.from([0xd0,0xcf,0x11,0xe0]));
+    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+      return buffer.subarray(0, 4).equals(Buffer.from([0x50,0x4b,0x03,0x04]));
+    case 'video/mp4':
+    case 'video/quicktime':
+      return buffer.subarray(4, 8).toString('ascii') === 'ftyp';
+    case 'video/webm':
+      return buffer.subarray(0, 4).equals(Buffer.from([0x1a,0x45,0xdf,0xa3]));
+    default:
+      return false;
+  }
+}
+
+async function verifyUploadedBlobContent(url: string, contentType: string): Promise<void> {
+  const response = await fetch(url, {
+    headers: { Range: 'bytes=0-63' },
+    cache: 'no-store',
+    redirect: 'error',
+  });
+  if (!response.ok && response.status !== 206) {
+    throw new Error('تعذر التحقق من محتوى الملف بعد الرفع.');
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (!hasExpectedSignature(buffer, contentType)) {
+    throw new Error('محتوى الملف لا يطابق نوعه المعلن.');
+  }
+}
 
 function parseAttachments(raw: string | null | undefined): Record<string, any> {
   try {
@@ -176,7 +260,14 @@ function publicCurrent(application: any, attachments: Record<string, any>) {
     }));
   };
 
+  const usedBytes = metadataTotalBytes(attachments);
+
   return {
+    storage: {
+      usedBytes,
+      maxBytes: MAX_TOTAL_UPLOAD_BYTES,
+      remainingBytes: Math.max(0, MAX_TOTAL_UPLOAD_BYTES - usedBytes),
+    },
     profile_photo: single('profile_photo'),
     cv: single('cv'),
     work_video: single('work_video'),
@@ -343,12 +434,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const field = String(payload.field || '');
         const originalName = String(payload.originalName || '').slice(0, 240);
         const size = Number(payload.size || 0);
-        const rule = fieldRules[field];
-
-        if (!rule) throw new Error('نوع المرفق غير مسموح.');
-        if (!Number.isFinite(size) || size <= 0 || size > rule.maxBytes) {
-          throw new Error(`حجم الملف يتجاوز الحد المسموح (${Math.round(rule.maxBytes / 1024 / 1024)} MB).`);
-        }
+        const rule = validateDeclaredFile(field, originalName, size);
 
         const application = await resolveApplication(applicationNumber, req);
         if (!application) throw new Error('يجب تأكيد البريد الإلكتروني أولًا أو طلب رابط استكمال جديد.');
@@ -360,6 +446,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           throw new Error('الملف مُرسل للمراجعة ولا يمكن تعديل المرفقات إلا بعد إعادة فتحه من الإدارة.');
         }
         await enforceUploadRateLimit(application.id);
+
+        if (rule.multiple) {
+          const existingCount = Array.isArray(attachments[field]) ? attachments[field].length : 0;
+          if (existingCount >= rule.limit) {
+            throw new Error(`تم بلوغ الحد الأقصى لعدد ملفات ${rule.label} (${rule.limit}). احذف ملفًا قبل إضافة ملف جديد.`);
+          }
+        }
+
+        const currentTotal = metadataTotalBytes(attachments);
+        const replacedBytes = rule.multiple ? 0 : existingFieldBytes(attachments, field);
+        const projectedTotal = currentTotal - replacedBytes + size;
+        if (projectedTotal > MAX_TOTAL_UPLOAD_BYTES) {
+          throw new Error('تم تجاوز الحد الإجمالي للمرفقات لهذا الطلب (500 MB). احذف بعض الملفات ثم أعد المحاولة.');
+        }
 
         return {
           allowedContentTypes: rule.types,
@@ -389,6 +489,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const attachments = parseAttachments(application.attachments);
         const meta = attachments._meta && typeof attachments._meta === 'object' ? attachments._meta : {};
         const now = new Date().toISOString();
+
+        const actualContentType = String(blob.contentType || '');
+        if (!rule.types.includes(actualContentType)) {
+          await safeDelete([blob.url]);
+          throw new Error('نوع الملف الفعلي غير مسموح.');
+        }
+
+        try {
+          await verifyUploadedBlobContent(blob.url, actualContentType);
+        } catch (error) {
+          await safeDelete([blob.url]);
+          throw error;
+        }
+
+        const currentTotal = metadataTotalBytes(attachments);
+        const replacedBytes = rule.multiple ? 0 : existingFieldBytes(attachments, field);
+        const projectedTotal = currentTotal - replacedBytes + Number(payload.size || 0);
+        if (projectedTotal > MAX_TOTAL_UPLOAD_BYTES) {
+          await safeDelete([blob.url]);
+          throw new Error('تم تجاوز الحد الإجمالي للمرفقات لهذا الطلب (500 MB).');
+        }
+
+        if (rule.multiple) {
+          const existingCount = Array.isArray(attachments[field]) ? attachments[field].length : 0;
+          if (existingCount >= rule.limit) {
+            await safeDelete([blob.url]);
+            throw new Error(`تم بلوغ الحد الأقصى لعدد ملفات ${rule.label} (${rule.limit}).`);
+          }
+        }
         const toDelete: string[] = [];
         const fileMeta = {
           originalName: String(payload.originalName || ''),
@@ -403,11 +532,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const metaItems: any[] = Array.isArray(meta[field]) ? [...meta[field]] : [];
           urls.push(blob.url);
           metaItems.push(fileMeta);
-          while (urls.length > rule.limit) {
-            const old = urls.shift();
-            metaItems.shift();
-            if (old && isStorageUrl(old)) toDelete.push(old);
-          }
           attachments[field] = urls;
           meta[field] = metaItems;
         } else {

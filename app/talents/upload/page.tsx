@@ -20,6 +20,11 @@ type ChecklistItem = {
 };
 
 type CurrentState = {
+  storage?: {
+    usedBytes: number;
+    maxBytes: number;
+    remainingBytes: number;
+  };
   profile_photo: CurrentFile | null;
   cv: CurrentFile | null;
   work_video: CurrentFile | null;
@@ -115,6 +120,12 @@ function ApplicantUploadPageContent() {
     if (file.size > maxBytes) {
       throw new Error(
         `${file.name}: الحجم أكبر من الحد المسموح (${Math.round(maxBytes / 1024 / 1024)} MB).`
+      );
+    }
+
+    if (current?.storage && file.size > current.storage.remainingBytes) {
+      throw new Error(
+        `${file.name}: لا توجد سعة كافية ضمن الحد الإجمالي للمرفقات لهذا الطلب.`
       );
     }
 
@@ -256,6 +267,28 @@ function ApplicantUploadPageContent() {
               </p>
             </div>
           </div>
+
+          {current?.storage && (
+            <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>استخدام المرفقات</span>
+                <span dir="ltr">
+                  {(current.storage.usedBytes / 1024 / 1024).toFixed(1)} / {(current.storage.maxBytes / 1024 / 1024).toFixed(0)} MB
+                </span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full bg-afaq-gold transition-all"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, (current.storage.usedBytes / current.storage.maxBytes) * 100))}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-white/50">
+                المتبقي {(current.storage.remainingBytes / 1024 / 1024).toFixed(1)} MB من الحد الإجمالي.
+              </p>
+            </div>
+          )}
 
           {current?.checklist && (
             <div className="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4">

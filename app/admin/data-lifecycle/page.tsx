@@ -10,6 +10,7 @@ type Report = {
   deletionEnabled: boolean;
   retention: {
     policyConfigured: boolean;
+    legalHoldCount: number;
     envKeys: Record<string, string>;
     statusSummary: Record<string, {
       count: number;
@@ -116,9 +117,12 @@ export default function DataLifecyclePage() {
           <section className="bg-white/5 border border-white/10 rounded-xl p-5">
             <div className="flex items-center justify-between gap-3 mb-4">
               <h2 className="text-lg font-bold text-white">سياسات الاحتفاظ</h2>
-              <span className={report.retention.policyConfigured ? 'text-green-400 text-sm' : 'text-amber-300 text-sm'}>
-                {report.retention.policyConfigured ? 'يوجد إعداد مفعّل' : 'لا توجد مدد مفعّلة'}
-              </span>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-white/50 text-sm">حجز قانوني: {report.retention.legalHoldCount}</span>
+                <span className={report.retention.policyConfigured ? 'text-green-400 text-sm' : 'text-amber-300 text-sm'}>
+                  {report.retention.policyConfigured ? 'يوجد إعداد مفعّل' : 'لا توجد مدد مفعّلة'}
+                </span>
+              </div>
             </div>
 
             <div className="overflow-x-auto">

@@ -16,6 +16,7 @@ const POLICY_ENV: Record<string, string> = {
 };
 
 const ATTACHMENT_FIELDS = ['profile_photo', 'work_photos', 'work_video', 'cv', 'documents'];
+const ORPHAN_GRACE_HOURS = Math.max(1, Number(process.env.ORPHAN_GRACE_HOURS || 24));
 
 function parseJson(raw: string | null | undefined): Record<string, any> {
   try {
@@ -140,6 +141,8 @@ export async function GET(req: NextRequest) {
       uploadedAt: string;
       url: string;
       ageDays: number;
+      ageHours: number;
+      stable: boolean;
     }> = [];
 
     if (token) {
@@ -155,12 +158,15 @@ export async function GET(req: NextRequest) {
           scanned += 1;
           scannedBytes += blob.size || 0;
           if (!referenced.has(blob.pathname)) {
+            const ageHours = Math.max(0, Math.floor((Date.now() - blob.uploadedAt.getTime()) / 3_600_000));
             orphans.push({
               pathname: blob.pathname,
               size: blob.size || 0,
               uploadedAt: blob.uploadedAt.toISOString(),
               url: blob.url,
               ageDays: ageDays(blob.uploadedAt),
+              ageHours,
+              stable: ageHours >= ORPHAN_GRACE_HOURS,
             });
           }
 
@@ -198,6 +204,9 @@ export async function GET(req: NextRequest) {
         scannedBytes,
         referencedCount: referenced.size,
         orphanCount: orphans.length,
+        stableCount: orphans.filter((item) => item.stable).length,
+        recentCount: orphans.filter((item) => !item.stable).length,
+        graceHours: ORPHAN_GRACE_HOURS,
         truncated,
         candidates: orphans.slice(0, 500),
       },

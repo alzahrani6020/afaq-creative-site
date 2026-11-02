@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getStorage, extractStorageKey, isStorageUrl } from '@/lib/storage';
 import { countryDialCodes } from '@/lib/catalog/locations';
+import { createApplicantUploadToken } from '@/lib/applicant-upload-token';
 import {
   sendTransactionalEmail,
   buildApplicationReceivedEmail,
@@ -476,10 +477,13 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
     if (email && verificationToken) {
       try {
         const verifyUrl = `${buildBaseUrl()}/api/talents/verify-email?token=${verificationToken}`;
+        const uploadToken = createApplicantUploadToken(application.id, application.applicationNumber);
+        const uploadUrl = `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(application.applicationNumber)}&token=${encodeURIComponent(uploadToken)}`;
         const { subject, html, text } = buildApplicationReceivedEmail({
           name: personal.full_name,
           applicationNumber: application.applicationNumber,
           verifyUrl,
+          uploadUrl,
         });
         const result = await sendTransactionalEmail({ to: email, subject, html, text });
         if (result.success) {

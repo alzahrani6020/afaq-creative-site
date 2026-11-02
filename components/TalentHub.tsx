@@ -640,10 +640,9 @@ export function TalentHub() {
     data.append('location', JSON.stringify(locationOverride));
     data.append('sanaieeConsent', String(sanaieeOverride));
 
-    if (files.profile_photo) data.append('profile_photo', files.profile_photo);
-    files.work_photos.forEach((f) => data.append('work_photos', f));
-    if (files.work_video) data.append('work_video', files.work_video);
-    if (files.cv) data.append('cv', files.cv);
+    // Do not send binary files with the initial registration request.
+    // Applicants upload documents only after verifying their email through
+    // the dedicated direct-to-Blob completion flow.
 
     data.append('portfolio_url', portfolioLinks.portfolio_url);
     data.append('behance_url', portfolioLinks.behance_url);
@@ -721,8 +720,6 @@ export function TalentHub() {
   };
 
   if (result?.success) {
-    const whatsappNumber = normalizePhone(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || process.env.WHATSAPP_NUMBER || '966567566616');
-    const whatsappText = `السلام عليكم، أرغب في إرسال السيرة الذاتية / نماذج من أعمالي للطلب رقم ${result.applicationNumber}.`;
     return (
       <section id="talents" className="py-24 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-afaq-gold/5 rounded-full blur-[150px]" />
@@ -783,14 +780,12 @@ export function TalentHub() {
                 )}
               </div>
             )}
-            <a
-              href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappText)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-afaq-blue to-afaq-teal text-white font-bold hover:shadow-lg hover:shadow-afaq-blue/30 transition-all"
-            >
-              إرسال نماذج أعمالي عبر واتساب
-            </a>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-right">
+              <p className="text-white font-semibold text-sm mb-1">الخطوة التالية</p>
+              <p className="text-white/60 text-sm">
+                افتح رسالة آفاق في بريدك وأكد البريد الإلكتروني. بعد التأكيد سيظهر لك رابط استكمال الملف ورفع المرفقات بأمان.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -816,7 +811,7 @@ export function TalentHub() {
           {flowMode === 'pick' && (
             <div className="space-y-6">
               <h3 className="text-xl font-bold text-white text-center">كيف تفضّل التسجيل؟</h3>
-              <p className="text-white/50 text-sm text-center">اختر المسار الأنسب — يمكنك دائماً استكمال التفاصيل لاحقاً عبر واتساب.</p>
+              <p className="text-white/50 text-sm text-center">اختر المسار الأنسب — رفع الملفات يتم بعد تأكيد البريد الإلكتروني.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   type="button"
@@ -832,7 +827,7 @@ export function TalentHub() {
                   className="text-right p-5 rounded-2xl border border-white/15 bg-white/5 hover:bg-white/10 transition"
                 >
                   <p className="text-white font-bold text-lg mb-1">تسجيل تفصيلي</p>
-                  <p className="text-white/60 text-sm">خبرة، موقع، مرفقات وخيارات إضافية</p>
+                  <p className="text-white/60 text-sm">خبرة، موقع، روابط أعمال وخيارات إضافية</p>
                 </button>
               </div>
             </div>
@@ -1557,16 +1552,17 @@ export function TalentHub() {
 
               {step === 9 && (
                 <div className="space-y-4">
-                  <h3 className="text-xl font-bold text-white mb-2">المرفقات (اختياري)</h3>
-                  <p className="text-white/50 text-sm mb-4">
-                    يمكنك التخطي الآن وإرسال السيرة أو نماذج الأعمال لاحقاً عبر واتساب بعد التسجيل.
-                  </p>
-                  <div className="space-y-4">
-                    <FileInput label="صورة شخصية (اختياري)" name="profile_photo" accept="image/*" onChange={(e) => handleFileChange('profile_photo', e)} />
-                    <FileInput label="صور الأعمال (اختياري)" name="work_photos" accept="image/*" multiple onChange={(e) => handleFileChange('work_photos', e)} />
-                    <FileInput label="فيديو للأعمال (اختياري)" name="work_video" accept="video/*" onChange={(e) => handleFileChange('work_video', e)} />
-                    <FileInput label="السيرة الذاتية PDF/Word (اختياري)" name="cv" accept=".pdf,.doc,.docx" onChange={(e) => handleFileChange('cv', e)} />
+                  <h3 className="text-xl font-bold text-white mb-2">المرفقات</h3>
+                  <div className="rounded-xl border border-afaq-gold/20 bg-afaq-gold/5 p-4">
+                    <p className="text-white/80 text-sm font-semibold mb-2">
+                      تُرفع الملفات بعد تأكيد البريد الإلكتروني.
+                    </p>
+                    <p className="text-white/50 text-sm leading-relaxed">
+                      أكمل التسجيل الآن بدون ملفات. بعد تأكيد بريدك ستنتقل إلى صفحة آمنة مخصصة لرفع السيرة الذاتية والوثائق والصور والفيديو مع متابعة تقدم الرفع.
+                    </p>
+                  </div>
 
+                  <div className="space-y-4">
                     <div className="pt-4 border-t border-white/10 space-y-3">
                       <p className="text-white/70 text-sm">روابط سابقة الأعمال (اختيارية)</p>
                       <input
@@ -1656,10 +1652,7 @@ export function TalentHub() {
                     {personal.email && <ReviewRow label="البريد" value={personal.email} />}
 
                     <div className="text-afaq-gold font-semibold mt-2">المرفقات:</div>
-                    <ReviewRow label="صورة شخصية" value={files.profile_photo?.name || '—'} />
-                    <ReviewRow label="صور الأعمال" value={files.work_photos.map((f) => f.name).join(', ') || '—'} />
-                    <ReviewRow label="فيديو" value={files.work_video?.name || '—'} />
-                    <ReviewRow label="السيرة الذاتية" value={files.cv?.name || '—'} />
+                    <ReviewRow label="رفع الملفات" value="بعد تأكيد البريد الإلكتروني" />
                     <ReviewRow label="Portfolio" value={portfolioLinks.portfolio_url || '—'} />
                     <ReviewRow label="Behance" value={portfolioLinks.behance_url || '—'} />
                     <ReviewRow label="Instagram" value={portfolioLinks.instagram_url || '—'} />

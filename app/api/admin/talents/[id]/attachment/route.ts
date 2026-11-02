@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin, UnauthorizedError } from '@/lib/admin-auth';
+import { requireAdmin, UnauthorizedError, isAuthorizedRole } from '@/lib/admin-auth';
 import { isStorageUrl } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
@@ -45,6 +45,14 @@ function originalName(attachments: Record<string, any>, field: string, indexRaw:
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const admin = await requireAdmin(req);
+    const configuredRoles = (process.env.ADMIN_ATTACHMENT_ROLES || 'admin,super_admin')
+      .split(',')
+      .map((role) => role.trim())
+      .filter(Boolean);
+    if (!isAuthorizedRole(admin.role, configuredRoles)) {
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
     const field = req.nextUrl.searchParams.get('field') || '';
     const indexRaw = req.nextUrl.searchParams.get('index');
 

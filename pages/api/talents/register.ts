@@ -185,6 +185,7 @@ const personalSchema = z.object({
     message: 'رابط التواصل غير صحيح',
   }).optional().or(z.literal('')),
   privacy: z.literal(true),
+  marketingConsent: z.boolean().optional().default(false),
 });
 
 const skillProfileSchema = z.object({
@@ -302,6 +303,24 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
 
     const parsed = registerSchema.parse(body);
     const personal = personalSchema.parse(JSON.parse(parsed.personal));
+    const consentRecordedAt = new Date().toISOString();
+    const personalWithConsentEvidence = {
+      ...personal,
+      consentEvidence: {
+        core: {
+          accepted: true,
+          recordedAt: consentRecordedAt,
+          termsVersion: '2026-11-02',
+          privacyVersion: '2026-11-02',
+          source: 'talent-registration',
+        },
+        marketing: {
+          accepted: personal.marketingConsent === true,
+          recordedAt: consentRecordedAt,
+          source: 'talent-registration',
+        },
+      },
+    };
 
     // Normalize phone to E.164 based on country
     const dialCode = countryDialCodes[personal.country || ''];
@@ -390,7 +409,7 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
             category: parsed.category,
             fields: parsed.fields || '',
             specialized: parsed.specialized,
-            personal: parsed.personal,
+            personal: JSON.stringify(personalWithConsentEvidence),
             phone,
             email,
             attachments: JSON.stringify(attachments),

@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UploadCloud, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
-export default function ApplicantUploadPage() {
+function ApplicantUploadPageContent() {
   const search = useSearchParams();
   const applicationNumber = search.get('application') || '';
   const token = search.get('token') || '';
@@ -136,5 +136,14 @@ function FileField({ name, label, accept, multiple = false }: { name: string; la
       <span className="block text-white/70 text-sm mb-2">{label}</span>
       <input type="file" name={name} accept={accept} multiple={multiple} className="block w-full text-sm text-white/60 file:ml-4 file:rounded-lg file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-white hover:file:bg-white/15" />
     </label>
+  );
+}
+
+
+export default function ApplicantUploadPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-afaq-bg flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-afaq-gold" /></main>}>
+      <ApplicantUploadPageContent />
+    </Suspense>
   );
 }

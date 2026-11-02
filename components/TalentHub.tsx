@@ -914,6 +914,9 @@ export function TalentHub() {
                     </span>
                   </label>
                   {errors.privacy && <p className="text-red-400 text-xs">{errors.privacy}</p>}
+                  <p className="text-amber-300/90 text-xs leading-relaxed">
+                    تنبيه: لا يمكن إكمال التسجيل دون الموافقة على الشروط والأحكام وسياسة الخصوصية. الموافقة على الرسائل التسويقية أدناه اختيارية ولا تؤثر على قبول التسجيل.
+                  </p>
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1535,6 +1538,9 @@ export function TalentHub() {
                     </span>
                   </label>
                   {errors.privacy && <p className="text-red-400 text-xs mt-1">{errors.privacy}</p>}
+                  <p className="text-amber-300/90 text-xs leading-relaxed">
+                    تنبيه: لا يمكن إكمال التسجيل دون الموافقة على الشروط والأحكام وسياسة الخصوصية. الموافقة على الرسائل التسويقية أدناه اختيارية ولا تؤثر على قبول التسجيل.
+                  </p>
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
                       type="checkbox"

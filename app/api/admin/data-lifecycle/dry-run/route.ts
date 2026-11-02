@@ -17,6 +17,7 @@ const POLICY_ENV: Record<string, string> = {
 };
 
 const ATTACHMENT_FIELDS = ['profile_photo', 'work_photos', 'work_video', 'cv', 'documents'];
+const ORPHAN_GRACE_HOURS = Math.max(1, Number(process.env.ORPHAN_GRACE_HOURS || 24));
 
 function parseJson(raw: string | null | undefined): Record<string, any> {
   try {
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
     }
 
     const token = process.env.BLOB_READ_WRITE_TOKEN;
-    const orphanCandidates: Array<{ pathname: string; size: number; ageDays: number }> = [];
+    const orphanCandidates: Array<{ pathname: string; size: number; ageDays: number; ageHours: number; stable: boolean }> = [];
     let scanned = 0;
     let truncated = false;
 
@@ -133,10 +134,13 @@ export async function POST(req: NextRequest) {
         for (const blob of result.blobs) {
           scanned += 1;
           if (!referenced.has(blob.pathname)) {
+            const ageHours = Math.max(0, Math.floor((Date.now() - blob.uploadedAt.getTime()) / 3_600_000));
             orphanCandidates.push({
               pathname: blob.pathname,
               size: blob.size || 0,
               ageDays: ageDays(blob.uploadedAt),
+              ageHours,
+              stable: ageHours >= ORPHAN_GRACE_HOURS,
             });
           }
 
@@ -169,7 +173,7 @@ export async function POST(req: NextRequest) {
         status: item.status,
         policyDays: item.policyDays,
       })),
-      orphanCandidates: orphanCandidates.map((item) => ({
+      orphanCandidates: orphanCandidates.filter((item) => item.stable).map((item) => ({
         pathname: item.pathname,
         size: item.size,
       })),
@@ -195,16 +199,21 @@ export async function POST(req: NextRequest) {
       orphanBlobs: {
         tokenConfigured: Boolean(token),
         scanned,
-        candidateCount: orphanCandidates.length,
-        candidateBytes: orphanCandidates.reduce((sum, item) => sum + item.size, 0),
+        candidateCount: orphanCandidates.filter((item) => item.stable).length,
+        candidateBytes: orphanCandidates.filter((item) => item.stable).reduce((sum, item) => sum + item.size, 0),
+        observedCount: orphanCandidates.length,
+        recentCount: orphanCandidates.filter((item) => !item.stable).length,
+        graceHours: ORPHAN_GRACE_HOURS,
         truncated,
-        candidates: orphanCandidates.slice(0, 500),
+        candidates: orphanCandidates.filter((item) => item.stable).slice(0, 500),
       },
       guardrails: {
         deletionEndpointExists: false,
         legalHoldExcluded: true,
         blobScope: 'talents/',
         maxBlobScan: 5000,
+        orphanGraceHours: ORPHAN_GRACE_HOURS,
+        recentOrphansExcluded: true,
       },
     });
 

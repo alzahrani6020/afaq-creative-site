@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { FileCheck, UserCheck, BriefcaseBusiness, ShieldAlert, Copyright, Link2, Scale, RefreshCw, Mail } from 'lucide-react';
+import { FileCheck, UserCheck, BriefcaseBusiness, ShieldAlert, Copyright, Link2, Scale, RefreshCw, Mail, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 
 const sections = [
@@ -19,6 +19,11 @@ const sections = [
     icon: BriefcaseBusiness,
     title: 'منظومة المواهب والخبرات',
     content: 'التسجيل في منظومة المواهب والخبرات يهدف إلى إنشاء ملف مهني وتقييمه وإدارة التواصل وربطه بفرص محتملة. التسجيل لا يشكل عرض عمل أو عقد توظيف أو ضمانًا للحصول على مشروع أو عميل أو فرصة أو دخل. أي علاقة لاحقة تخضع لاتفاق مستقل يحدد النطاق والأتعاب والمسؤوليات عند الحاجة.',
+  },
+  {
+    icon: GraduationCap,
+    title: 'قبول التدريب والتأهيل',
+    content: 'عند اختيار المتقدم أو ترشيحه لفرصة تتطلب تدريبًا أو تأهيلًا أو تقييمًا عمليًا أو نظريًا، فإنه يوافق على المشاركة في البرنامج أو المسار التدريبي المطلوب والالتزام بمتطلباته المعقولة وتعليماته ومواعيده. ويُعد التدريب أو التأهيل مرحلة إعداد وتقييم بحسب طبيعة الفرصة، ولا يشكل بحد ذاته عقد توظيف أو ضمانًا للقبول النهائي أو التعاقد أو الحصول على دخل ما لم يُبرم اتفاق مستقل ينص على خلاف ذلك.',
   },
   {
     icon: ShieldAlert,
@@ -74,7 +79,7 @@ export default function TermsPage() {
           <h1 className="text-4xl md:text-5xl font-extrabold text-white">
             شروط استخدام <span className="text-afaq-gold">أفاق إبداعية</span>
           </h1>
-          <p className="mt-4 text-white/40">آخر تحديث: ١ نوفمبر ٢٠٢٦</p>
+          <p className="mt-4 text-white/40">آخر تحديث: ٢ نوفمبر ٢٠٢٦</p>
         </motion.div>
 
         <div className="space-y-8">

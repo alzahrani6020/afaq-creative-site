@@ -56,8 +56,8 @@ function ApplicantUploadPageContent() {
   const [submittingProfile, setSubmittingProfile] = useState(false);
 
   const query = useMemo(
-    () => new URLSearchParams({ applicationNumber, token }).toString(),
-    [applicationNumber, token]
+    () => new URLSearchParams({ applicationNumber }).toString(),
+    [applicationNumber]
   );
 
   const refresh = async () => {
@@ -70,18 +70,44 @@ function ApplicantUploadPageContent() {
   };
 
   useEffect(() => {
-    if (!applicationNumber || !token) {
-      setLoading(false);
-      setMessage('رابط الاستكمال غير مكتمل.');
-      return;
-    }
+    let cancelled = false;
 
-    refresh()
+    const initialize = async () => {
+      if (!applicationNumber) {
+        throw new Error('رابط الاستكمال غير مكتمل.');
+      }
+
+      if (token) {
+        const exchange = await fetch('/api/talents/upload-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ applicationNumber, token }),
+        });
+        const exchangeJson = await exchange.json();
+        if (!exchange.ok || !exchangeJson.success) {
+          throw new Error(exchangeJson.message || 'تعذر فتح جلسة الاستكمال.');
+        }
+
+        const cleanUrl = `/talents/upload?application=${encodeURIComponent(applicationNumber)}`;
+        window.history.replaceState({}, '', cleanUrl);
+      }
+
+      await refresh();
+    };
+
+    initialize()
       .catch((error) => {
+        if (cancelled) return;
         setValid(false);
         setMessage(error instanceof Error ? error.message : 'تعذر التحقق من الرابط.');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [applicationNumber, token, query]);
 
   const uploadOne = async (field: string, file: File) => {
@@ -99,7 +125,6 @@ function ApplicantUploadPageContent() {
       multipart: file.size > 5 * 1024 * 1024,
       clientPayload: JSON.stringify({
         applicationNumber,
-        token,
         field,
         originalName: file.name,
         size: file.size,
@@ -155,7 +180,6 @@ function ApplicantUploadPageContent() {
 
     const params = new URLSearchParams({
       applicationNumber,
-      token,
       field,
     });
     if (typeof index === 'number') params.set('index', String(index));

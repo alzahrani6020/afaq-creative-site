@@ -235,11 +235,13 @@ export function buildApplicationReceivedEmail({
   name,
   applicationNumber,
   verifyUrl,
+  verificationCode,
   uploadUrl,
 }: {
   name: string;
   applicationNumber: string;
   verifyUrl?: string;
+  verificationCode?: string;
   uploadUrl?: string;
 }): { subject: string; html: string; text: string } {
   const subject = `تم استلام طلبك في أفاق – ${applicationNumber}`;
@@ -261,6 +263,13 @@ export function buildApplicationReceivedEmail({
           <a href="${verifyUrl}" style="display: inline-block; padding: 12px 28px; background: #0ea5e9; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">تأكيد البريد الإلكتروني</a>
         </div>
         ` : ''}
+        ${verificationCode ? `
+        <div style="margin: 18px 0; padding: 18px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
+          <p style="margin: 0 0 8px; color: #475569; font-size: 14px;">إذا تعذر فتح الرابط، استخدم رمز التحقق التالي:</p>
+          <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; direction:ltr;">${verificationCode}</div>
+          <p style="margin: 8px 0 0; color: #64748b; font-size: 12px;">الرمز صالح لمدة 24 ساعة ويستخدم مرة واحدة.</p>
+        </div>
+        ` : ''}
         ${uploadUrl ? `
         <div style="margin: 28px 0; padding: 20px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
           <p style="margin: 0 0 14px; font-weight: bold;">استكمل ملفك المهني</p>
@@ -276,7 +285,7 @@ export function buildApplicationReceivedEmail({
       </div>
     </div>
   `;
-  const text = `مرحبًا ${name}،\n\nتم استلام طلبك في منصة أفاق بنجاح.\nرقم طلبك: ${applicationNumber}\n\nاحتفظ بهذا الرقم للرجوع إليه عند التواصل معنا.\n\n${verifyUrl ? `لتأكيد بريدك الإلكتروني: ${verifyUrl}\n\n` : ''}${uploadUrl ? `لاستكمال الملف ورفع الوثائق والصور والفيديو: ${uploadUrl}\n\n` : ''}للتواصل: info@bonds-global.com`;
+  const text = `مرحبًا ${name}،\n\nتم استلام طلبك في منصة أفاق بنجاح.\nرقم طلبك: ${applicationNumber}\n\nاحتفظ بهذا الرقم للرجوع إليه عند التواصل معنا.\n\n${verifyUrl ? `لتأكيد بريدك الإلكتروني: ${verifyUrl}\n\n` : ''}${verificationCode ? `رمز التحقق: ${verificationCode}\n\n` : ''}${uploadUrl ? `لاستكمال الملف ورفع الوثائق والصور والفيديو: ${uploadUrl}\n\n` : ''}للتواصل: info@bonds-global.com`;
   return { subject, html, text };
 }
 

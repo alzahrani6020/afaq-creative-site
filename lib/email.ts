@@ -267,7 +267,8 @@ export function buildApplicationReceivedEmail({
         <div style="margin: 18px 0; padding: 18px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
           <p style="margin: 0 0 8px; color: #475569; font-size: 14px;">إذا تعذر فتح الرابط، استخدم رمز التحقق التالي:</p>
           <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; direction:ltr;">${verificationCode}</div>
-          <p style="margin: 8px 0 0; color: #64748b; font-size: 12px;">الرمز صالح لمدة 24 ساعة ويستخدم مرة واحدة.</p>
+          <p style="margin: 8px 0 14px; color: #64748b; font-size: 12px;">الرمز صالح لمدة 24 ساعة ويستخدم مرة واحدة.</p>
+          <a href="${buildBaseUrl()}/talents/verify" style="display:inline-block;padding:10px 20px;background:#0f172a;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">إدخال رمز التحقق يدويًا</a>
         </div>
         ` : ''}
         ${uploadUrl ? `

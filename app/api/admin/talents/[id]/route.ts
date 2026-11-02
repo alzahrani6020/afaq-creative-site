@@ -342,6 +342,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
           if (isStorageUrl(url)) fileUrls.push(url);
         }
       }
+      if (Array.isArray(attachments.documents)) {
+        for (const url of attachments.documents) {
+          if (isStorageUrl(url)) fileUrls.push(url);
+        }
+      }
 
       for (const url of fileUrls) {
         const key = extractStorageKey(url);

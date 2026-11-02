@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Database, FileWarning, Loader2, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Database, FileWarning, Loader2, PlayCircle, ShieldCheck } from 'lucide-react';
 
 type Report = {
   generatedAt: string;
@@ -65,6 +65,8 @@ export default function DataLifecyclePage() {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [dryRunLoading, setDryRunLoading] = useState(false);
+  const [dryRun, setDryRun] = useState<any>(null);
 
   useEffect(() => {
     fetch('/api/admin/data-lifecycle', { cache: 'no-store' })
@@ -83,6 +85,28 @@ export default function DataLifecyclePage() {
       .catch((err) => setError(err instanceof Error ? err.message : 'تعذر تحميل التقرير'))
       .finally(() => setLoading(false));
   }, [router]);
+
+  const runDryRun = async () => {
+    setDryRunLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/data-lifecycle/dry-run', {
+        method: 'POST',
+        cache: 'no-store',
+      });
+      const body = await res.json();
+      if (res.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (!res.ok || !body.success) throw new Error(body.message || 'تعذر إنشاء Dry Run');
+      setDryRun(body);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر إنشاء Dry Run');
+    } finally {
+      setDryRunLoading(false);
+    }
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center py-24"><Loader2 className="w-8 h-8 text-afaq-teal animate-spin" /></div>;
@@ -109,6 +133,54 @@ export default function DataLifecyclePage() {
           </p>
         </div>
       </div>
+
+      <section className="bg-white/5 border border-white/10 rounded-xl p-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-white">Dry Run لخطة التنظيف</h2>
+            <p className="text-white/50 text-sm mt-1">
+              يحسب فقط ما قد يدخل في خطة التنظيف ويولّد بصمة ثابتة للخطة. لا توجد أي عملية حذف.
+            </p>
+          </div>
+          <button
+            onClick={runDryRun}
+            disabled={dryRunLoading}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-afaq-teal text-white font-semibold hover:bg-afaq-blue2 disabled:opacity-50"
+          >
+            {dryRunLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+            تشغيل Dry Run
+          </button>
+        </div>
+
+        {dryRun && (
+          <div className="mt-5 grid md:grid-cols-4 gap-4">
+            <div className="rounded-lg bg-white/5 border border-white/10 p-4">
+              <p className="text-white/40 text-xs">Retention candidates</p>
+              <p className="text-xl font-bold text-white mt-1">{dryRun.retention.candidateCount}</p>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-4">
+              <p className="text-white/40 text-xs">Orphan candidates</p>
+              <p className="text-xl font-bold text-white mt-1">{dryRun.orphanBlobs.candidateCount}</p>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-4">
+              <p className="text-white/40 text-xs">حجم Orphans المحتمل</p>
+              <p className="text-xl font-bold text-white mt-1">{mb(dryRun.orphanBlobs.candidateBytes)} MB</p>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-4">
+              <p className="text-white/40 text-xs">Legal Hold</p>
+              <p className="text-xl font-bold text-white mt-1">{dryRun.legalHoldCount}</p>
+            </div>
+
+            <div className="md:col-span-4 rounded-lg bg-black/20 border border-white/10 p-4">
+              <p className="text-white/40 text-xs mb-1">Plan Hash</p>
+              <code className="text-xs text-afaq-teal break-all" dir="ltr">{dryRun.planHash}</code>
+              <p className="text-white/40 text-xs mt-2">
+                التنفيذ الفعلي للحذف غير متاح في النظام الحالي: {String(dryRun.executionAvailable)}
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
 
       {error && <div className="bg-red-500/10 border border-red-500/20 text-red-300 rounded-xl p-4">{error}</div>}
 

@@ -127,6 +127,7 @@ export default function AdminTalentDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [copied, setCopied] = useState(false);
+  const [sendingUploadLink, setSendingUploadLink] = useState(false);
 
   const fetchTalent = async () => {
     setLoading(true);
@@ -195,6 +196,29 @@ export default function AdminTalentDetailPage() {
       setError('حدث خطأ أثناء حفظ التغييرات.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendUploadLink = async () => {
+    setSendingUploadLink(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/talents/${id}/send-upload-link`, { method: 'POST' });
+      const json = await res.json();
+      if (res.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (!res.ok || !json.success) {
+        setError(json.message || 'تعذر إرسال رابط الاستكمال.');
+        return;
+      }
+      setError(json.message || 'تم إرسال رابط الاستكمال.');
+      await fetchTalent();
+    } catch {
+      setError('حدث خطأ أثناء إرسال رابط الاستكمال.');
+    } finally {
+      setSendingUploadLink(false);
     }
   };
 
@@ -865,6 +889,22 @@ export default function AdminTalentDetailPage() {
 
           <div className="bg-white/5 border border-white/10 rounded-xl p-6">
             <h2 className="text-lg font-bold text-white mb-4">إدارة الطلب</h2>
+
+            <button
+              onClick={handleSendUploadLink}
+              disabled={sendingUploadLink || !talent.emailVerified}
+              title="إرسال رابط استكمال جديد"
+              aria-label="إرسال رابط استكمال جديد"
+              className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-afaq-teal/30 text-afaq-teal hover:bg-afaq-teal/10 transition-colors disabled:opacity-40"
+            >
+              {sendingUploadLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+              إرسال رابط استكمال جديد
+            </button>
+
+            {!talent.emailVerified && (
+              <p className="text-amber-300/80 text-xs mb-3">لا يمكن إرسال رابط الاستكمال قبل تأكيد البريد الإلكتروني.</p>
+            )}
+
             {!showDeleteConfirm ? (
               <button
                 onClick={() => setShowDeleteConfirm(true)}

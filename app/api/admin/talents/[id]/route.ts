@@ -95,6 +95,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const changes: string[] = [];
     const statusChanged = Boolean(parsed.status && parsed.status !== current.status);
 
+    if (statusChanged && parsed.status === 'need_information') {
+      const attachments = safeJsonParse<Record<string, any>>(current.attachments, {});
+      const workflow = attachments._workflow && typeof attachments._workflow === 'object'
+        ? attachments._workflow
+        : {};
+      attachments._workflow = {
+        ...workflow,
+        submitted: false,
+        reopenedAt: new Date().toISOString(),
+        reopenedReason: 'need_information',
+      };
+      data.attachments = safeJsonStringify(attachments);
+      changes.push('إعادة فتح ملف المتقدم لاستكمال البيانات');
+    }
+
     // Status and admin notes
     if (parsed.status && Object.values(ApplicationStatus).includes(parsed.status)) {
       data.status = parsed.status;

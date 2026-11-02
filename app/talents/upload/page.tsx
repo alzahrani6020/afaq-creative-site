@@ -108,7 +108,7 @@ function ApplicantUploadPageContent() {
             <FileField name="documents" label="المؤهلات والشهادات والوثائق" accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp" multiple />
             <FileField name="profile_photo" label="الصورة الشخصية" accept="image/jpeg,image/png,image/webp" />
             <FileField name="work_photos" label="صور الأعمال" accept="image/jpeg,image/png,image/webp" multiple />
-            <FileField name="work_video" label="فيديو الأعمال" accept="video/mp4,video/webm" />
+            <FileField name="work_video" label="فيديو الأعمال" accept="video/mp4,video/webm,video/quicktime,.mov" />
 
             <p className="text-white/40 text-xs leading-relaxed">الحد الأقصى لكل ملف 10 ميجابايت. الصيغ المسموحة تُفحص فعليًا قبل الحفظ.</p>
 

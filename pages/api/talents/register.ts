@@ -419,6 +419,7 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
 
     const sanaieeConsent = parsed.sanaieeConsent === 'true';
     let verificationToken: string | undefined;
+    let verificationCode: string | undefined;
 
     let application: Awaited<ReturnType<typeof prisma.talentApplication.create>>;
     try {
@@ -471,9 +472,10 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
         if (email) {
           const credential = createEmailVerificationCredential();
           verificationToken = credential.token;
+          verificationCode = credential.code;
           await tx.emailVerificationToken.create({
             data: {
-              token: credential.token,
+              token: credential.storedToken,
               applicationId: app.id,
               expiresAt: credential.expiresAt,
             },
@@ -497,7 +499,6 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
     if (email && verificationToken) {
       try {
         const verifyUrl = `${buildBaseUrl()}/api/talents/verify-email?token=${verificationToken}`;
-        const verificationCode = verificationToken.split('.')[0];
         const { subject, html, text } = buildApplicationReceivedEmail({
           name: personal.full_name,
           applicationNumber: application.applicationNumber,

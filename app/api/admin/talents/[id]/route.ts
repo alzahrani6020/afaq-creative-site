@@ -7,7 +7,10 @@ import { requireAdmin, UnauthorizedError, isAuthorizedRole } from '@/lib/admin-a
 import { prisma } from '@/lib/prisma';
 import { getStorage, isStorageUrl, extractStorageKey } from '@/lib/storage';
 import { buildApplicationStatusEmail, sendTransactionalEmail, buildBaseUrl } from '@/lib/email';
-import { createApplicantUploadToken } from '@/lib/applicant-upload-token';
+import {
+  createApplicantUploadToken,
+  rotateApplicantUploadAccess,
+} from '@/lib/applicant-upload-token';
 
 const updateSchema = z.object({
   status: z.enum(['new', 'under_review', 'qualified', 'need_information', 'contacted', 'accepted', 'rejected']).optional(),
@@ -95,6 +98,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const data: any = {};
     const changes: string[] = [];
     const statusChanged = Boolean(parsed.status && parsed.status !== current.status);
+    let rotatedUploadAccessId: string | null = null;
 
     if (typeof parsed.legalHold === 'boolean') {
       const attachments = safeJsonParse<Record<string, any>>(current.attachments, {});
@@ -132,7 +136,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         reopenedAt: new Date().toISOString(),
         reopenedReason: 'need_information',
       };
-      data.attachments = safeJsonStringify(attachments);
+      const rotated = rotateApplicantUploadAccess(safeJsonStringify(attachments));
+      data.attachments = rotated.attachments;
+      rotatedUploadAccessId = rotated.accessId;
       changes.push('إعادة فتح ملف المتقدم لاستكمال البيانات');
     }
 
@@ -280,8 +286,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (statusChanged && updated.email) {
       try {
         const personal = safeJsonParse<Record<string, any>>(updated.personal, {});
-        const uploadUrl = updated.status === 'need_information'
-          ? `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(updated.applicationNumber)}&token=${encodeURIComponent(createApplicantUploadToken(updated.id, updated.applicationNumber))}`
+        const uploadUrl = updated.status === 'need_information' && rotatedUploadAccessId
+          ? `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(updated.applicationNumber)}&token=${encodeURIComponent(createApplicantUploadToken(updated.id, updated.applicationNumber, rotatedUploadAccessId))}`
           : undefined;
         const { subject, html, text } = buildApplicationStatusEmail({
           applicationNumber: updated.applicationNumber,

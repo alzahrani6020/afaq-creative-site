@@ -35,6 +35,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
 
     const rotated = rotateApplicantUploadAccess(talent.attachments);
+    await prisma.talentApplication.update({
+      where: { id: talent.id },
+      data: { attachments: rotated.attachments },
+    });
+
     const token = createApplicantUploadToken(talent.id, talent.applicationNumber, rotated.accessId);
     const uploadUrl = `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(talent.applicationNumber)}&token=${encodeURIComponent(token)}`;
     let name = 'متقدم';
@@ -58,20 +63,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ success: false, message: 'تعذر إرسال رابط الاستكمال في الوقت الحالي.' }, { status: 502 });
     }
 
-    await prisma.$transaction([
-      prisma.talentApplication.update({
-        where: { id: talent.id },
-        data: { attachments: rotated.attachments },
-      }),
-      prisma.talentApplicationActivity.create({
-        data: {
-          applicationId: talent.id,
-          adminUserId: admin.id,
-          action: 'إرسال رابط استكمال جديد للمتقدم',
-          newValue: JSON.stringify({ uploadAccessId: rotated.accessId }),
-        },
-      }),
-    ]);
+    await prisma.talentApplicationActivity.create({
+      data: {
+        applicationId: talent.id,
+        adminUserId: admin.id,
+        action: 'إرسال رابط استكمال جديد للمتقدم',
+        newValue: JSON.stringify({ uploadAccessId: rotated.accessId }),
+      },
+    });
 
     return NextResponse.json({ success: true, message: 'تم إرسال رابط استكمال جديد إلى بريد المتقدم.' });
   } catch (error) {

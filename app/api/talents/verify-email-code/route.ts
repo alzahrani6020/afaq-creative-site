@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isVerificationCodeMatch } from '@/lib/applicant-email-verification';
-import { createApplicantUploadToken } from '@/lib/applicant-upload-token';
+import { createApplicantUploadToken, rotateApplicantUploadAccess } from '@/lib/applicant-upload-token';
 import { buildBaseUrl } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
       return response({ success: false, message: 'رمز التحقق غير صحيح أو منتهي الصلاحية.' }, 400);
     }
 
+    const rotated = rotateApplicantUploadAccess(application.attachments);
+
     await prisma.$transaction([
       prisma.emailVerificationToken.update({
         where: { id: matched.id },
@@ -80,14 +82,23 @@ export async function POST(req: NextRequest) {
       }),
       prisma.talentApplication.update({
         where: { id: application.id },
-        data: { emailVerified: true, emailVerifiedAt: new Date(), emailStatus: 'verified' },
+        data: {
+          emailVerified: true,
+          emailVerifiedAt: new Date(),
+          emailStatus: 'verified',
+          attachments: rotated.attachments,
+        },
       }),
       prisma.talentApplicationActivity.create({
         data: { applicationId: application.id, action: 'تم تأكيد البريد عبر رمز التحقق' },
       }),
     ]);
 
-    const uploadToken = createApplicantUploadToken(application.id, application.applicationNumber);
+    const uploadToken = createApplicantUploadToken(
+      application.id,
+      application.applicationNumber,
+      rotated.accessId
+    );
     return response({
       success: true,
       uploadUrl: `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(application.applicationNumber)}&token=${encodeURIComponent(uploadToken)}`,

@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     }
 
     let token: string | undefined;
+    let verificationCode: string | undefined;
     if (!application.emailVerified) {
       // Invalidate any existing unused tokens for this application.
       await prisma.emailVerificationToken.updateMany({
@@ -68,9 +69,10 @@ export async function POST(req: NextRequest) {
 
       const credential = createEmailVerificationCredential();
       token = credential.token;
+      verificationCode = credential.code;
       await prisma.emailVerificationToken.create({
         data: {
-          token: credential.token,
+          token: credential.storedToken,
           applicationId: application.id,
           expiresAt: credential.expiresAt,
         },
@@ -84,7 +86,6 @@ export async function POST(req: NextRequest) {
     try {
       const personal = JSON.parse(application.personal || '{}');
       const verifyUrl = token ? `${buildBaseUrl()}/api/talents/verify-email?token=${token}` : undefined;
-      const verificationCode = token ? token.split('.')[0] : undefined;
       const uploadToken = application.emailVerified
         ? createApplicantUploadToken(application.id, application.applicationNumber)
         : undefined;

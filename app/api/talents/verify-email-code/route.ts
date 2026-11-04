@@ -30,11 +30,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (application.emailVerified) {
-      const token = createApplicantUploadToken(application.id, application.applicationNumber);
       return response({
         success: true,
         alreadyVerified: true,
-        uploadUrl: `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(application.applicationNumber)}&token=${encodeURIComponent(token)}`,
+        message: 'البريد الإلكتروني مؤكد بالفعل. اطلب رابط استكمال جديد ليُرسل إلى بريدك المسجل.',
       });
     }
 

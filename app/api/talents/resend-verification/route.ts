@@ -89,6 +89,10 @@ export async function POST(req: NextRequest) {
       const verifyUrl = token ? `${buildBaseUrl()}/api/talents/verify-email?token=${token}` : undefined;
       if (application.emailVerified) {
         rotatedUploadAccess = rotateApplicantUploadAccess(application.attachments);
+        await prisma.talentApplication.update({
+          where: { id: application.id },
+          data: { attachments: rotatedUploadAccess.attachments },
+        });
       }
       const uploadToken = rotatedUploadAccess
         ? createApplicantUploadToken(
@@ -130,9 +134,6 @@ export async function POST(req: NextRequest) {
           emailFailedAt: emailStatus === 'failed' ? new Date() : null,
           emailError,
           emailMessageId,
-          ...(emailStatus === 'sent' && rotatedUploadAccess
-            ? { attachments: rotatedUploadAccess.attachments }
-            : {}),
         },
       });
     } catch (updateErr) {

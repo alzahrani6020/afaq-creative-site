@@ -30,12 +30,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (application.emailVerified) {
-      const token = createApplicantUploadToken(application.id, application.applicationNumber);
-      return response({
-        success: true,
-        alreadyVerified: true,
-        uploadUrl: `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(application.applicationNumber)}&token=${encodeURIComponent(token)}`,
-      });
+      return response(
+        {
+          success: false,
+          alreadyVerified: true,
+          message: 'البريد الإلكتروني مؤكد بالفعل. استخدم خيار إعادة إرسال رابط الاستكمال إلى بريدك الإلكتروني.',
+        },
+        409
+      );
     }
 
     const recentFailures = await prisma.talentApplicationActivity.count({

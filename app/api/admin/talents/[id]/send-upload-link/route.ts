@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, UnauthorizedError } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
-import { createApplicantUploadToken } from '@/lib/applicant-upload-token';
+import { createApplicantUploadToken, rotateApplicantUploadAccess } from '@/lib/applicant-upload-token';
 import { buildApplicationReceivedEmail, buildBaseUrl, sendTransactionalEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
@@ -34,7 +34,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       }, { status: 409 });
     }
 
-    const token = createApplicantUploadToken(talent.id, talent.applicationNumber);
+    const rotated = rotateApplicantUploadAccess(talent.attachments);
+    await prisma.talentApplication.update({
+      where: { id: talent.id },
+      data: { attachments: rotated.attachments },
+    });
+
+    const token = createApplicantUploadToken(talent.id, talent.applicationNumber, rotated.accessId);
     const uploadUrl = `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(talent.applicationNumber)}&token=${encodeURIComponent(token)}`;
     let name = 'متقدم';
     try {
@@ -62,6 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         applicationId: talent.id,
         adminUserId: admin.id,
         action: 'إرسال رابط استكمال جديد للمتقدم',
+        newValue: JSON.stringify({ uploadAccessId: rotated.accessId }),
       },
     });
 

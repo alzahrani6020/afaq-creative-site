@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { buildVerificationSuccessHtml, buildVerificationErrorHtml, buildBaseUrl } from '@/lib/email';
-import { createApplicantUploadToken } from '@/lib/applicant-upload-token';
+import { createApplicantUploadToken, rotateApplicantUploadAccess } from '@/lib/applicant-upload-token';
 import { getEmailVerificationLookup } from '@/lib/applicant-email-verification';
 
 export const dynamic = 'force-dynamic';
@@ -47,6 +47,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const rotated = rotateApplicantUploadAccess(record.application.attachments);
+
     await prisma.$transaction([
       prisma.emailVerificationToken.updateMany({
         where: { applicationId: record.applicationId, used: false },
@@ -58,11 +60,16 @@ export async function GET(req: NextRequest) {
           emailVerified: true,
           emailVerifiedAt: new Date(),
           emailStatus: 'verified',
+          attachments: rotated.attachments,
         },
       }),
     ]);
 
-    const uploadToken = createApplicantUploadToken(record.application.id, record.application.applicationNumber);
+    const uploadToken = createApplicantUploadToken(
+      record.application.id,
+      record.application.applicationNumber,
+      rotated.accessId
+    );
     const uploadUrl = `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(record.application.applicationNumber)}&token=${encodeURIComponent(uploadToken)}`;
     const success = new NextResponse(buildVerificationSuccessHtml(record.application.applicationNumber, uploadUrl), {
       status: 200,

@@ -2,7 +2,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { prisma } from '@/lib/prisma';
 import { getStorage, extractStorageKey, isStorageUrl } from '@/lib/storage';
-import { verifyApplicantUploadSessionToken } from '@/lib/applicant-upload-token';
+import {
+  getApplicantUploadAccessId,
+  verifyApplicantUploadSessionToken,
+} from '@/lib/applicant-upload-token';
 import path from 'path';
 
 export const config = {
@@ -195,7 +198,14 @@ async function resolveApplication(applicationNumber: string, req: NextApiRequest
   const application = await prisma.talentApplication.findUnique({ where: { applicationNumber } });
   if (!application) return null;
   if (!application.emailVerified) return null;
-  if (!verifyApplicantUploadSessionToken(sessionToken, application.id, application.applicationNumber)) return null;
+  if (
+    !verifyApplicantUploadSessionToken(
+      sessionToken,
+      application.id,
+      application.applicationNumber,
+      getApplicantUploadAccessId(application.attachments)
+    )
+  ) return null;
   return application;
 }
 
@@ -493,6 +503,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           tokenPayload: JSON.stringify({
             applicationId: application.id,
             applicationNumber: application.applicationNumber,
+            uploadAccessId: getApplicantUploadAccessId(application.attachments),
             field,
             originalName,
             size,
@@ -510,6 +521,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         if (!application || application.applicationNumber !== payload.applicationNumber) {
           throw new Error('Application not found');
+        }
+
+        const currentUploadAccessId = getApplicantUploadAccessId(application.attachments);
+        const payloadUploadAccessId =
+          typeof payload.uploadAccessId === 'string' ? payload.uploadAccessId : null;
+        if (currentUploadAccessId !== payloadUploadAccessId) {
+          await safeDelete([blob.url]);
+          throw new Error('انتهت صلاحية جلسة الرفع. اطلب رابط استكمال جديدًا.');
         }
 
         const attachments = parseAttachments(application.attachments);

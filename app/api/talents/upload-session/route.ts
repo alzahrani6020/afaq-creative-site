@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import {
   APPLICANT_UPLOAD_SESSION_TTL_SECONDS,
   createApplicantUploadSessionToken,
+  getApplicantUploadAccessId,
   verifyApplicantUploadToken,
 } from '@/lib/applicant-upload-token';
 
@@ -36,7 +37,12 @@ export async function POST(req: NextRequest) {
     if (
       !application ||
       !application.emailVerified ||
-      !verifyApplicantUploadToken(token, application.id, application.applicationNumber)
+      !verifyApplicantUploadToken(
+        token,
+        application.id,
+        application.applicationNumber,
+        getApplicantUploadAccessId(application.attachments)
+      )
     ) {
       return withSecurityHeaders(
         NextResponse.json(
@@ -48,7 +54,8 @@ export async function POST(req: NextRequest) {
 
     const sessionToken = createApplicantUploadSessionToken(
       application.id,
-      application.applicationNumber
+      application.applicationNumber,
+      getApplicantUploadAccessId(application.attachments)
     );
 
     const res = NextResponse.json({

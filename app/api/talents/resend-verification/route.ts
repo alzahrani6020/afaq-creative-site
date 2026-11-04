@@ -3,7 +3,7 @@ import { createEmailVerificationCredential } from '@/lib/applicant-email-verific
 import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail, buildApplicationReceivedEmail, buildBaseUrl } from '@/lib/email';
 import { getClientIp } from '@/lib/admin-auth';
-import { createApplicantUploadToken } from '@/lib/applicant-upload-token';
+import { createApplicantUploadToken, rotateApplicantUploadAccess } from '@/lib/applicant-upload-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
 
     let token: string | undefined;
     let verificationCode: string | undefined;
+    let rotatedUploadAccess: ReturnType<typeof rotateApplicantUploadAccess> | undefined;
     if (!application.emailVerified) {
       // Invalidate any existing unused tokens for this application.
       await prisma.emailVerificationToken.updateMany({
@@ -86,8 +87,19 @@ export async function POST(req: NextRequest) {
     try {
       const personal = JSON.parse(application.personal || '{}');
       const verifyUrl = token ? `${buildBaseUrl()}/api/talents/verify-email?token=${token}` : undefined;
-      const uploadToken = application.emailVerified
-        ? createApplicantUploadToken(application.id, application.applicationNumber)
+      if (application.emailVerified) {
+        rotatedUploadAccess = rotateApplicantUploadAccess(application.attachments);
+        await prisma.talentApplication.update({
+          where: { id: application.id },
+          data: { attachments: rotatedUploadAccess.attachments },
+        });
+      }
+      const uploadToken = rotatedUploadAccess
+        ? createApplicantUploadToken(
+            application.id,
+            application.applicationNumber,
+            rotatedUploadAccess.accessId
+          )
         : undefined;
       const uploadUrl = uploadToken
         ? `${buildBaseUrl()}/talents/upload?application=${encodeURIComponent(application.applicationNumber)}&token=${encodeURIComponent(uploadToken)}`

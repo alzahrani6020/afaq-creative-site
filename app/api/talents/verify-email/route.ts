@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { buildVerificationSuccessHtml, buildVerificationErrorHtml, buildBaseUrl } from '@/lib/email';
 import { createApplicantUploadToken } from '@/lib/applicant-upload-token';
+import { getEmailVerificationLookup } from '@/lib/applicant-email-verification';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +21,24 @@ export async function GET(req: NextRequest) {
       return invalid;
     }
 
-    const record = await prisma.emailVerificationToken.findUnique({
-      where: { token },
-      include: { application: true },
-    });
+    const lookup = getEmailVerificationLookup(token);
+    if (!lookup) {
+      return new NextResponse(buildVerificationErrorHtml('الرابط غير صالح أو انتهت صلاحيته.'), {
+        status: 400,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
+    }
+
+    const record = 'legacyToken' in lookup
+      ? await prisma.emailVerificationToken.findUnique({
+          where: { token: lookup.legacyToken },
+          include: { application: true },
+        })
+      : await prisma.emailVerificationToken.findFirst({
+          where: { token: { startsWith: lookup.tokenPrefix } },
+          include: { application: true },
+          orderBy: { createdAt: 'desc' },
+        });
 
     if (!record || record.used || record.expiresAt < new Date()) {
       return new NextResponse(buildVerificationErrorHtml('الرابط غير صالح أو انتهت صلاحيته.'), {

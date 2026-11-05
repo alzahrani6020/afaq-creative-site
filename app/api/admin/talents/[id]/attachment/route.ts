@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin, UnauthorizedError, isAuthorizedRole } from '@/lib/admin-auth';
-import { isStorageUrl } from '@/lib/storage';
+import { getStoredFileFetchHeaders, isStorageUrl } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +77,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     const upstream = await fetch(url, {
+      headers: getStoredFileFetchHeaders(url),
       redirect: 'error',
       cache: 'no-store',
     });

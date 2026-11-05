@@ -131,7 +131,7 @@ function ApplicantUploadPageContent() {
 
     const pathname = `talents/${applicationNumber}/${field}/${file.name}`;
     await upload(pathname, file, {
-      access: 'public',
+      access: 'private',
       handleUploadUrl: '/api/talents/upload-documents',
       multipart: file.size > 5 * 1024 * 1024,
       clientPayload: JSON.stringify({

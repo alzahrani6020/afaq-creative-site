@@ -541,18 +541,12 @@ export function TalentHub() {
     if (!validateQuickStep()) return;
     const professionName = quickProfession.trim();
     const typed = currentProfile.profileType || 'موهبة';
-    const sectorOptions = getSectorOptionsForProfileType(typed as any);
-    const closestSector = sectorOptions[0]?.id || currentProfile.sector || '';
     const quickProfile: SkillProfile = {
       ...emptyProfile('primary'),
       profileType: typed,
-      sector: closestSector,
       isPrimary: true,
       isCustomProfession: true,
       customProfessionName: professionName,
-      customProfessionClosestSector: closestSector,
-      skillLevel: 'ممارس',
-      yearsExperience: '1-3 سنوات',
       description: '',
     };
     setProfiles([quickProfile]);
@@ -560,7 +554,7 @@ export function TalentHub() {
 
     // Quick registration only captures the country explicitly selected by the user.
     // Do not infer a region or city that the applicant did not choose.
-    await handleSubmitWithProfiles([quickProfile], null, personal);
+    await handleSubmitWithProfiles([quickProfile], null, personal, false, 'quick');
   };
 
   const handleFileChange = (key: keyof Files, e: FormEvent<HTMLInputElement>) => {
@@ -577,7 +571,8 @@ export function TalentHub() {
     profilesOverride: SkillProfile[],
     locationOverride: LocationInfo | null,
     personalOverride: PersonalInfo,
-    sanaieeOverride = false
+    sanaieeOverride = false,
+    submissionMode: 'quick' | 'full' = 'full'
   ) => {
     setLoading(true);
     setResult(null);
@@ -633,6 +628,7 @@ export function TalentHub() {
       data.append('location', JSON.stringify(locationOverride));
     }
     data.append('sanaieeConsent', String(sanaieeOverride));
+    data.append('flowMode', submissionMode);
 
     // Do not send binary files with the initial registration request.
     // Applicants upload documents only after verifying their email through
@@ -666,7 +662,7 @@ export function TalentHub() {
   };
 
   const handleSubmit = async () => {
-    await handleSubmitWithProfiles(profiles, location, personal, sanaieeConsent);
+    await handleSubmitWithProfiles(profiles, location, personal, sanaieeConsent, 'full');
   };
 
   const steps = [

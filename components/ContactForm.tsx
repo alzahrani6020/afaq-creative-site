@@ -14,6 +14,7 @@ interface ContactFormProps {
 export function ContactForm({ initialService = '' }: ContactFormProps) {
   const serviceNames = siteServices.map((service) => service.title);
   const normalizedInitialService = serviceNames.includes(initialService) ? initialService : '';
+  const serviceLocked = Boolean(normalizedInitialService);
 
   const [form, setForm] = useState({
     name: '',
@@ -99,14 +100,26 @@ export function ContactForm({ initialService = '' }: ContactFormProps) {
                 className="w-full px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-afaq-gold/50" />
             </div>
             <label className="sr-only" htmlFor="service-select">اختر الخدمة</label>
-            <select id="service-select" required value={form.service} onChange={e => setForm({...form, service: e.target.value})}
-              className="w-full px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-afaq-gold/50 appearance-none">
+            <select
+              id="service-select"
+              required
+              value={form.service}
+              disabled={serviceLocked}
+              onChange={e => setForm({...form, service: e.target.value})}
+              aria-describedby={serviceLocked ? 'service-locked-note' : undefined}
+              className="w-full px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-afaq-gold/50 appearance-none disabled:opacity-80 disabled:cursor-not-allowed"
+            >
               <option value="" className="bg-afaq-bg">اختر الخدمة</option>
               {serviceNames.map((serviceName) => (
                 <option key={serviceName} value={serviceName} className="bg-afaq-bg">{serviceName}</option>
               ))}
-              <option value="أخرى" className="bg-afaq-bg">أخرى</option>
+              {!serviceLocked && <option value="أخرى" className="bg-afaq-bg">أخرى</option>}
             </select>
+            {serviceLocked && (
+              <p id="service-locked-note" className="text-afaq-gold/80 text-xs">
+                هذه مساحة عمل مخصصة لهذه الخدمة، لذلك تم تثبيت نوع الخدمة تلقائيًا.
+              </p>
+            )}
             <textarea rows={4} placeholder="تفاصيل المشروع..." value={form.message} onChange={e => setForm({...form, message: e.target.value})}
               className="w-full px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-afaq-gold/50 resize-none" />
             <button type="submit" className="w-full py-4 rounded-xl bg-gradient-to-r from-afaq-gold to-afaq-gold2 text-afaq-bg font-bold hover:shadow-lg hover:shadow-afaq-gold/30 transition-all flex items-center justify-center gap-2">

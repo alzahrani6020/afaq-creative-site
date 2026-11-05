@@ -48,6 +48,100 @@ function replaceBlobUrls(value: unknown, mapping: Map<string, string>): unknown 
   return value;
 }
 
+const SINGLE_ATTACHMENT_FIELDS = ['profile_photo', 'work_video', 'cv'] as const;
+const MULTI_ATTACHMENT_FIELDS = ['work_photos', 'documents'] as const;
+
+async function probePublicBlob(publicUrl: string): Promise<'accessible' | 'missing' | 'unexpected'> {
+  const response = await fetch(publicUrl, {
+    method: 'HEAD',
+    cache: 'no-store',
+    redirect: 'manual',
+  });
+  if (response.ok) return 'accessible';
+  if (response.status === 404 || response.status === 410) return 'missing';
+  return 'unexpected';
+}
+
+function collectKnownAttachmentUrls(attachments: Record<string, any>): Set<string> {
+  const urls = new Set<string>();
+  for (const field of SINGLE_ATTACHMENT_FIELDS) {
+    const value = attachments[field];
+    if (isPublicBlobUrl(value)) urls.add(value);
+  }
+  for (const field of MULTI_ATTACHMENT_FIELDS) {
+    const values = Array.isArray(attachments[field]) ? attachments[field] : [];
+    for (const value of values) {
+      if (isPublicBlobUrl(value)) urls.add(value);
+    }
+  }
+  return urls;
+}
+
+function reconcileKnownAttachmentFields(
+  source: Record<string, any>,
+  mapping: Map<string, string>,
+  missing: Set<string>
+): { attachments: Record<string, any>; removedMissingRefs: number } {
+  const attachments = JSON.parse(JSON.stringify(source || {})) as Record<string, any>;
+  const meta = attachments._meta && typeof attachments._meta === 'object'
+    ? { ...attachments._meta }
+    : {};
+  let removedMissingRefs = 0;
+
+  for (const field of SINGLE_ATTACHMENT_FIELDS) {
+    const value = attachments[field];
+    if (!isPublicBlobUrl(value)) continue;
+    const replacement = mapping.get(value);
+    if (replacement) {
+      attachments[field] = replacement;
+      continue;
+    }
+    if (missing.has(value)) {
+      delete attachments[field];
+      delete meta[field];
+      removedMissingRefs += 1;
+      continue;
+    }
+    throw new Error(`UNRESOLVED_PUBLIC_BLOB_${field}`);
+  }
+
+  for (const field of MULTI_ATTACHMENT_FIELDS) {
+    const values = Array.isArray(attachments[field]) ? attachments[field] : [];
+    const metaItems = Array.isArray(meta[field]) ? meta[field] : [];
+    const nextValues: any[] = [];
+    const nextMeta: any[] = [];
+
+    for (let index = 0; index < values.length; index += 1) {
+      const value = values[index];
+      if (!isPublicBlobUrl(value)) {
+        nextValues.push(value);
+        if (index < metaItems.length) nextMeta.push(metaItems[index]);
+        continue;
+      }
+
+      const replacement = mapping.get(value);
+      if (replacement) {
+        nextValues.push(replacement);
+        if (index < metaItems.length) nextMeta.push(metaItems[index]);
+        continue;
+      }
+
+      if (missing.has(value)) {
+        removedMissingRefs += 1;
+        continue;
+      }
+
+      throw new Error(`UNRESOLVED_PUBLIC_BLOB_${field}_${index}`);
+    }
+
+    attachments[field] = nextValues;
+    meta[field] = nextMeta;
+  }
+
+  attachments._meta = meta;
+  return { attachments, removedMissingRefs };
+}
+
 async function copyAndVerify(
   publicUrl: string,
   privateToken: string
@@ -145,43 +239,75 @@ async function main() {
     }
   }
 
+  const accessible = new Set<string>();
+  const missing = new Set<string>();
+  let unexpected = 0;
+  let unsupported = 0;
+
+  for (const publicUrl of Array.from(allUrls)) {
+    const status = await probePublicBlob(publicUrl);
+    if (status === 'accessible') accessible.add(publicUrl);
+    else if (status === 'missing') missing.add(publicUrl);
+    else unexpected += 1;
+  }
+
+  for (const application of parsed) {
+    const known = collectKnownAttachmentUrls(application.attachments as Record<string, any>);
+    for (const publicUrl of application.urls) {
+      if (!known.has(publicUrl)) unsupported += 1;
+    }
+  }
+
   console.log('APPLICANT_BLOB_MIGRATION: inventory', {
     mode: MODE,
     applications: parsed.length,
     uniquePublicBlobs: allUrls.size,
+    accessiblePublicBlobs: accessible.size,
+    missingPublicBlobs: missing.size,
+    unexpectedStatusBlobs: unexpected,
+    unsupportedPublicReferences: unsupported,
   });
 
   if (MODE === 'dry-run' || allUrls.size === 0) {
     return;
   }
+  if (unexpected > 0 || unsupported > 0) {
+    throw new Error(`MIGRATION_PREFLIGHT_FAILED_unexpected_${unexpected}_unsupported_${unsupported}`);
+  }
 
   const mapping = new Map<string, string>();
   let copied = 0;
 
-  for (const publicUrl of Array.from(allUrls)) {
+  for (const publicUrl of Array.from(accessible)) {
     const privateUrl = await copyAndVerify(publicUrl, privateToken);
     mapping.set(publicUrl, privateUrl);
     copied += 1;
-    console.log('APPLICANT_BLOB_MIGRATION: copied', { copied, total: allUrls.size });
+    console.log('APPLICANT_BLOB_MIGRATION: copied', { copied, total: accessible.size });
   }
 
   let updatedApplications = 0;
   let conflicts = 0;
+  let removedMissingRefs = 0;
 
   for (const application of parsed) {
-    const nextAttachments = replaceBlobUrls(application.attachments, mapping);
+    const reconciled = reconcileKnownAttachmentFields(
+      application.attachments as Record<string, any>,
+      mapping,
+      missing
+    );
     const updated = await prisma.talentApplication.updateMany({
       where: {
         id: application.id,
         updatedAt: application.updatedAt,
       },
       data: {
-        attachments: JSON.stringify(nextAttachments),
+        attachments: JSON.stringify(reconciled.attachments),
       },
     });
 
     if (updated.count === 1) {
       updatedApplications += 1;
+      removedMissingRefs += reconciled.removedMissingRefs;
       continue;
     }
 
@@ -194,6 +320,7 @@ async function main() {
   console.log('APPLICANT_BLOB_MIGRATION: complete', {
     copied,
     updatedApplications,
+    removedMissingRefs,
     conflicts,
     publicBlobsDeleted: 0,
   });

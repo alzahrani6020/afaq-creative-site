@@ -132,7 +132,7 @@ async function main() {
       if (MODE === 'execute') throw new Error('INVALID_ATTACHMENTS_JSON');
       continue;
     }
-    const urls = [...collectPublicBlobUrls(attachments)];
+    const urls = Array.from(collectPublicBlobUrls(attachments));
     urls.forEach((url) => allUrls.add(url));
     if (urls.length > 0) {
       parsed.push({

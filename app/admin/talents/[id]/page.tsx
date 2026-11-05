@@ -29,6 +29,7 @@ import { getSector, getProfession } from '@/lib/catalog/sectors';
 import { countries, getRegion } from '@/lib/catalog/locations';
 import { serviceAreas } from '@/lib/catalog/serviceAreas';
 import { workPlaces } from '@/lib/catalog/workPlaces';
+import { getAllowedStatusTransitions } from '@/lib/application-status-workflow';
 
 const statusLabels: Record<string, string> = {
   new: 'جديد',
@@ -1010,8 +1011,13 @@ export default function AdminTalentDetailPage() {
                   onChange={(e) => setStatus(e.target.value)}
                   className="w-full appearance-none bg-white/5 border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-afaq-teal"
                 >
-                  {Object.entries(statusLabels).map(([key, label]) => (
-                    <option key={key} value={key} className="bg-afaq-bg">{label}</option>
+                  <option value={talent.status} className="bg-afaq-bg">
+                    {statusLabels[talent.status] || talent.status}
+                  </option>
+                  {getAllowedStatusTransitions(talent.status).map((key) => (
+                    <option key={key} value={key} className="bg-afaq-bg">
+                      {statusLabels[key] || key}
+                    </option>
                   ))}
                 </select>
               </div>

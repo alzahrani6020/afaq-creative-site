@@ -175,9 +175,9 @@ function runMiddleware(req: MulterRequest, res: NextApiResponse, fn: Function) {
 const personalSchema = z.object({
   full_name: z.string().min(1, 'الاسم الكامل مطلوب'),
   phone: z.string().min(1, 'رقم الجوال مطلوب'),
-  email: z.string().refine((v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), {
+  email: z.string().min(1, 'البريد الإلكتروني مطلوب').refine((v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), {
     message: 'البريد الإلكتروني غير صحيح',
-  }).optional().or(z.literal('')),
+  }),
   country: z.string().optional().or(z.literal('')),
   city: z.string().optional().or(z.literal('')),
   social_link: z.string().refine((v) => {

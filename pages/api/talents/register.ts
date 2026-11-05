@@ -586,6 +586,28 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
           data: { adminNotified: true },
         });
       }
+
+      await prisma.talentApplicationActivity.create({
+        data: {
+          applicationId: application.id,
+          action: adminResult.success || waResult.success
+            ? 'تم تنفيذ إشعار الإدارة'
+            : 'فشل إشعار الإدارة',
+          newValue: JSON.stringify({
+            email: {
+              success: adminResult.success,
+              messageId: adminResult.messageId || null,
+              response: adminResult.response || null,
+              error: adminResult.error || null,
+            },
+            whatsapp: {
+              success: waResult.success,
+              error: waResult.error || null,
+            },
+          }),
+        },
+      });
+
       if (!adminResult.success) {
         console.error('Failed to send admin email notification', {
           applicationNumber: application.applicationNumber,

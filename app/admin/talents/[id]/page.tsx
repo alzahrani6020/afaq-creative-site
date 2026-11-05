@@ -129,6 +129,8 @@ export default function AdminTalentDetailPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [copied, setCopied] = useState(false);
   const [sendingUploadLink, setSendingUploadLink] = useState(false);
+  const [resendingStatusEmail, setResendingStatusEmail] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState<{ type: 'success' | 'warning'; text: string } | null>(null);
 
   const fetchTalent = async () => {
     setLoading(true);
@@ -189,6 +191,15 @@ export default function AdminTalentDetailPage() {
       }
 
       if (res.ok && json.success) {
+        if (json.notification?.attempted) {
+          setNotificationMessage(
+            json.notification.success
+              ? { type: 'success', text: 'تم حفظ الحالة وإرسال إشعار البريد للمتقدم.' }
+              : { type: 'warning', text: 'تم حفظ الحالة، لكن تعذر إرسال إشعار البريد. يمكنك إعادة الإرسال من زر إشعار الحالة.' }
+          );
+        } else {
+          setNotificationMessage(null);
+        }
         await fetchTalent();
       } else {
         setError(json.message || 'تعذر حفظ التغييرات.');
@@ -220,6 +231,39 @@ export default function AdminTalentDetailPage() {
       setError('حدث خطأ أثناء إرسال رابط الاستكمال.');
     } finally {
       setSendingUploadLink(false);
+    }
+  };
+
+  const handleResendStatusEmail = async () => {
+    setResendingStatusEmail(true);
+    setError('');
+    setNotificationMessage(null);
+    try {
+      const res = await fetch(`/api/admin/talents/${id}/resend-status-email`, { method: 'POST' });
+      const json = await res.json();
+      if (res.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (!res.ok || !json.success) {
+        setNotificationMessage({
+          type: 'warning',
+          text: json.message || 'تعذر إعادة إرسال إشعار الحالة.',
+        });
+        return;
+      }
+      setNotificationMessage({
+        type: 'success',
+        text: json.message || 'تم إرسال إشعار الحالة إلى بريد المتقدم.',
+      });
+      await fetchTalent();
+    } catch {
+      setNotificationMessage({
+        type: 'warning',
+        text: 'حدث خطأ أثناء إعادة إرسال إشعار الحالة.',
+      });
+    } finally {
+      setResendingStatusEmail(false);
     }
   };
 
@@ -907,6 +951,15 @@ export default function AdminTalentDetailPage() {
                 {error}
               </div>
             )}
+            {notificationMessage && (
+              <div className={`rounded-lg px-4 py-3 mb-4 text-sm border ${
+                notificationMessage.type === 'success'
+                  ? 'bg-green-500/10 border-green-500/20 text-green-300'
+                  : 'bg-amber-500/10 border-amber-500/20 text-amber-200'
+              }`}>
+                {notificationMessage.text}
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
@@ -973,6 +1026,17 @@ export default function AdminTalentDetailPage() {
             >
               {sendingUploadLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
               إرسال رابط استكمال جديد
+            </button>
+
+            <button
+              onClick={handleResendStatusEmail}
+              disabled={resendingStatusEmail || !emailAddress}
+              title="إعادة إرسال إشعار الحالة الحالية"
+              aria-label="إعادة إرسال إشعار الحالة الحالية"
+              className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-white/15 text-white/80 hover:bg-white/5 transition-colors disabled:opacity-40"
+            >
+              {resendingStatusEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+              إعادة إرسال إشعار الحالة
             </button>
 
             {!talent.emailVerified && (

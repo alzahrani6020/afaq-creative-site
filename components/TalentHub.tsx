@@ -300,8 +300,8 @@ function emptyProfile(fixedId?: string): SkillProfile {
 
 const SA_DEFAULT_LOCATION: LocationInfo = {
   country: 'SA',
-  region: 'riyadh',
-  city: 'riyadh',
+  region: '',
+  city: '',
   district: '',
   serviceArea: ['حسب الاتفاق'],
   workPlace: ['أعمل عن بُعد'],
@@ -558,21 +558,9 @@ export function TalentHub() {
     setProfiles([quickProfile]);
     setEditingIndex(0);
 
-    const selectedQuickCountry = countries.find((country) => country.value === personal.country);
-    const firstRegion = selectedQuickCountry?.regions?.[0];
-    const firstCity = firstRegion?.cities?.[0];
-    const quickLocation: LocationInfo = {
-      country: selectedQuickCountry?.value || '',
-      region: firstRegion?.value || '',
-      city: firstCity?.value || '',
-      district: '',
-      serviceArea: ['حسب الاتفاق'],
-      workPlace: ['أعمل عن بُعد'],
-    };
-
-    setLocation(quickLocation);
-    // Submit on next tick after state flush via direct payload path
-    await handleSubmitWithProfiles([quickProfile], quickLocation, personal);
+    // Quick registration only captures the country explicitly selected by the user.
+    // Do not infer a region or city that the applicant did not choose.
+    await handleSubmitWithProfiles([quickProfile], null, personal);
   };
 
   const handleFileChange = (key: keyof Files, e: FormEvent<HTMLInputElement>) => {
@@ -587,7 +575,7 @@ export function TalentHub() {
 
   const handleSubmitWithProfiles = async (
     profilesOverride: SkillProfile[],
-    locationOverride: LocationInfo,
+    locationOverride: LocationInfo | null,
     personalOverride: PersonalInfo,
     sanaieeOverride = false
   ) => {
@@ -595,7 +583,7 @@ export function TalentHub() {
     setResult(null);
 
     const primary = profilesOverride.find((p) => p.isPrimary) || profilesOverride[0];
-    const dialCode = countryDialCodes[personalOverride.country || locationOverride.country || ''] || '966';
+    const dialCode = countryDialCodes[personalOverride.country || locationOverride?.country || ''] || '966';
     let phoneE164 = personalOverride.phone;
     let digits = normalizePhone(personalOverride.phone);
     if (digits.startsWith(dialCode)) {
@@ -607,7 +595,7 @@ export function TalentHub() {
 
     const personalPayload: PersonalInfo = {
       ...personalOverride,
-      country: personalOverride.country || locationOverride.country,
+      country: personalOverride.country || locationOverride?.country || '',
       phone: phoneE164,
       social_link: normalizeUrl(personalOverride.social_link),
     };
@@ -641,7 +629,9 @@ export function TalentHub() {
     });
 
     data.append('skillProfiles', JSON.stringify(profilesForStorage));
-    data.append('location', JSON.stringify(locationOverride));
+    if (locationOverride) {
+      data.append('location', JSON.stringify(locationOverride));
+    }
     data.append('sanaieeConsent', String(sanaieeOverride));
 
     // Do not send binary files with the initial registration request.
@@ -662,7 +652,7 @@ export function TalentHub() {
         trackEvent('talent_application_submit', {
           flow_mode: flowMode,
           category: primary.profileType || 'unknown',
-          country: locationOverride.country || 'unknown',
+          country: personalOverride.country || locationOverride?.country || 'unknown',
         });
         setResult({ success: true, message: json.message });
       } else {

@@ -360,6 +360,12 @@ export default function AdminTalentDetailPage() {
         return;
       }
       if (res.ok && json.success) {
+        if (json.emailReverificationRequired) {
+          setNotificationMessage({
+            type: 'warning',
+            text: 'تم تحديث البريد الإلكتروني، وأُلغي التحقق السابق. يجب إعادة إرسال رسالة تأكيد البريد قبل منح أي رابط استكمال جديد.',
+          });
+        }
         setIsEditing(false);
         await fetchTalent();
       } else {

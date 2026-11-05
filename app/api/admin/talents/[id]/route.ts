@@ -5,7 +5,7 @@ import { z } from 'zod';
 const ApplicationStatus = ['new', 'under_review', 'qualified', 'need_information', 'contacted', 'accepted', 'rejected'] as const;
 import { requireAdmin, UnauthorizedError, isAuthorizedRole } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
-import { getStorage, isStorageUrl, extractStorageKey } from '@/lib/storage';
+import { deleteStoredUrl, isStorageUrl } from '@/lib/storage';
 import { buildApplicationStatusEmail, sendTransactionalEmail, buildBaseUrl } from '@/lib/email';
 import {
   createApplicantUploadToken,
@@ -383,7 +383,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     // change the success response, since the DB record is already removed.
     try {
       const attachments = safeJsonParse<Record<string, any>>(talent.attachments, {});
-      const storage = getStorage();
       const fileUrls: string[] = [];
 
       if (attachments.profile_photo && isStorageUrl(attachments.profile_photo)) {
@@ -407,10 +406,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       }
 
       for (const url of fileUrls) {
-        const key = extractStorageKey(url);
-        if (key) {
-          await storage.deleteFile(key);
-        }
+        await deleteStoredUrl(url);
       }
     } catch (cleanupErr) {
       const message = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);

@@ -6,24 +6,15 @@ import { countries } from '@/lib/catalog/locations';
 import { CountryOption } from '@/lib/catalog/types';
 
 function FlagImage({ country, size = 24 }: { country: CountryOption; size?: number }) {
-  const code = country.value.toLowerCase();
   return (
-    <span className="inline-flex items-center justify-center shrink-0" style={{ width: size, height: Math.round(size * 0.75) }}>
-      <img
-        src={`https://flagcdn.com/w40/${code}.png`}
-        srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
-        width={size}
-        height={Math.round(size * 0.75)}
-        alt={`علم ${country.label}`}
-        loading="lazy"
-        className="block rounded-[2px] object-cover shadow-sm"
-        onError={(e) => {
-          e.currentTarget.style.display = 'none';
-          const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-          if (fallback) fallback.style.display = 'inline';
-        }}
-      />
-      <span className="hidden text-xs text-white/60">{country.value}</span>
+    <span
+      className="inline-flex items-center justify-center shrink-0 leading-none"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.9) }}
+      role="img"
+      aria-label={`علم ${country.label}`}
+      title={country.label}
+    >
+      {country.flag || country.value}
     </span>
   );
 }

@@ -196,15 +196,15 @@ const personalSchema = z.object({
   marketingConsent: z.boolean().optional().default(false),
 });
 
-const skillProfileSchema = z.object({
+const skillProfileBaseSchema = z.object({
   id: z.string().optional(),
   profileType: z.string().min(1),
-  sector: z.string().min(1),
+  sector: z.string().default(''),
   profession: z.string().default(''),
   specializations: z.array(z.string()).default([]),
   services: z.array(z.string()).default([]),
-  skillLevel: z.string().min(1),
-  yearsExperience: z.string().min(1),
+  skillLevel: z.string().default(''),
+  yearsExperience: z.string().default(''),
   description: z.string().max(500).default(''),
   isPrimary: z.boolean().default(false),
   isCustomProfession: z.boolean().default(false),
@@ -220,6 +220,18 @@ const skillProfileSchema = z.object({
 }, {
   message: 'اسم المهنة مطلوب',
   path: ['customProfessionName'],
+});
+
+const fullSkillProfileSchema = skillProfileBaseSchema.superRefine((data, ctx) => {
+  if (!data.sector.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['sector'], message: 'المجال مطلوب' });
+  }
+  if (!data.skillLevel.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['skillLevel'], message: 'مستوى الخبرة مطلوب' });
+  }
+  if (!data.yearsExperience.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['yearsExperience'], message: 'سنوات الخبرة مطلوبة' });
+  }
 });
 
 const locationSchema = z.object({
@@ -239,6 +251,7 @@ const registerSchema = z.object({
   skillProfiles: z.string().optional(),
   location: z.string().optional(),
   sanaieeConsent: z.string().optional(),
+  flowMode: z.enum(['quick', 'full']).default('full'),
 });
 
 async function generateApplicationNumber(): Promise<string> {
@@ -399,10 +412,11 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
       if (value) attachments[field] = value;
     }
 
-    let skillProfilesData: z.infer<typeof skillProfileSchema>[] = [];
+    let skillProfilesData: z.infer<typeof skillProfileBaseSchema>[] = [];
     if (parsed.skillProfiles) {
       const parsedProfiles = JSON.parse(parsed.skillProfiles);
-      skillProfilesData = z.array(skillProfileSchema).parse(parsedProfiles);
+      const schema = parsed.flowMode === 'quick' ? skillProfileBaseSchema : fullSkillProfileSchema;
+      skillProfilesData = z.array(schema).parse(parsedProfiles);
     }
 
     let locationData: z.infer<typeof locationSchema> | undefined;

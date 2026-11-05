@@ -47,14 +47,18 @@ function normalizePhone(phone: string): string {
   return phone.replace(/[\s\-\(\)\.]/g, '').replace(/^\+/, '');
 }
 
-function toE164(phone: string, dialCode: string): string {
+function normalizeLocalPhoneDigits(phone: string, dialCode: string): string {
   let digits = normalizePhone(phone);
   if (digits.startsWith(dialCode)) {
     digits = digits.slice(dialCode.length);
   } else if (digits.startsWith('0')) {
     digits = digits.replace(/^0+/, '');
   }
-  return `+${dialCode}${digits}`;
+  return digits;
+}
+
+function toE164(phone: string, dialCode: string): string {
+  return `+${dialCode}${normalizeLocalPhoneDigits(phone, dialCode)}`;
 }
 
 function getExtension(filename: string): string {
@@ -329,9 +333,27 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
 
     const parsed = registerSchema.parse(body);
     const personal = personalSchema.parse(JSON.parse(parsed.personal));
+    const countryCode = personal.country?.trim().toUpperCase() || '';
+    const dialCode = countryDialCodes[countryCode];
+    if (!countryCode || !dialCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'اختر دولة صحيحة لرقم الجوال.',
+      });
+    }
+
+    const localPhoneDigits = normalizeLocalPhoneDigits(personal.phone, dialCode);
+    if (!/^\d+$/.test(localPhoneDigits) || localPhoneDigits.length < 7 || (dialCode.length + localPhoneDigits.length) > 15) {
+      return res.status(400).json({
+        success: false,
+        message: 'رقم الجوال غير صحيح.',
+      });
+    }
+
+    const normalizedPersonal = { ...personal, country: countryCode };
     const consentRecordedAt = new Date().toISOString();
     const personalWithConsentEvidence = {
-      ...personal,
+      ...normalizedPersonal,
       consentEvidence: {
         core: {
           accepted: true,
@@ -348,10 +370,9 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
       },
     };
 
-    // Normalize phone to E.164 based on country
-    const dialCode = countryDialCodes[personal.country || ''];
-    const phone = dialCode ? toE164(personal.phone, dialCode) : personal.phone.trim();
-    const email = personal.email?.trim().toLowerCase() || null;
+    // Normalize phone to E.164 based on the validated country.
+    const phone = `+${dialCode}${localPhoneDigits}`;
+    const email = normalizedPersonal.email.trim().toLowerCase();
 
     const whereConditions: any[] = [{ phone }];
     if (email) whereConditions.push({ email });
@@ -424,6 +445,35 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
       locationData = locationSchema.parse(JSON.parse(parsed.location));
     }
 
+    if (skillProfilesData.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'بيانات المهنة أو الخبرة مطلوبة.',
+      });
+    }
+
+    const primaryProfile = skillProfilesData.find((profile) => profile.isPrimary) || skillProfilesData[0];
+    if (primaryProfile.profileType !== parsed.category) {
+      return res.status(400).json({
+        success: false,
+        message: 'تصنيف الطلب لا يطابق الملف المهني الرئيسي.',
+      });
+    }
+
+    if (parsed.flowMode === 'full' && !locationData) {
+      return res.status(400).json({
+        success: false,
+        message: 'بيانات الدولة والمنطقة والمدينة مطلوبة في التسجيل الكامل.',
+      });
+    }
+
+    if (locationData && locationData.country !== countryCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'دولة رقم الجوال يجب أن تطابق دولة الموقع.',
+      });
+    }
+
     const sanaieeConsent = parsed.sanaieeConsent === 'true';
     let verificationToken: string | undefined;
     let verificationCode: string | undefined;
@@ -442,7 +492,7 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
             email,
             attachments: JSON.stringify(attachments),
             status: 'new',
-            country: locationData?.country,
+            country: locationData?.country || countryCode,
             region: locationData?.region,
             city: locationData?.city,
             district: locationData?.district,

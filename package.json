@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3008",
-    "build": "next build",
+    "build": "tsx scripts/migrate-public-applicant-blobs.ts && next build",
     "start": "next start",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",

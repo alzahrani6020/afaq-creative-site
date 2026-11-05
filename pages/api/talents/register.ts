@@ -492,7 +492,7 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
             email,
             attachments: JSON.stringify(attachments),
             status: 'new',
-            country: locationData?.country,
+            country: locationData?.country || countryCode,
             region: locationData?.region,
             city: locationData?.city,
             district: locationData?.district,

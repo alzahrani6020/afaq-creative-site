@@ -372,23 +372,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const rotated = rotateApplicantUploadAccess(JSON.stringify(attachments));
     const frozenAttachments = parseAttachments(rotated.attachments);
 
-    await prisma.$transaction([
-      prisma.talentApplication.update({
-        where: { id: application.id },
-        data: { attachments: rotated.attachments, status: 'under_review' },
-      }),
-      prisma.talentApplicationActivity.create({
-        data: {
-          applicationId: application.id,
-          action: 'أرسل المتقدم الملف للمراجعة',
-          newValue: JSON.stringify({
-            submittedAt: now,
-            version: frozenAttachments._workflow?.version || attachments._workflow.version,
-            uploadAccessId: rotated.accessId,
-          }),
-        },
-      }),
-    ]);
+    try {
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.talentApplication.updateMany({
+          where: { id: application.id, updatedAt: application.updatedAt },
+          data: { attachments: rotated.attachments, status: 'under_review' },
+        });
+        if (updated.count !== 1) {
+          throw new Error('ATTACHMENT_CONFLICT');
+        }
+        await tx.talentApplicationActivity.create({
+          data: {
+            applicationId: application.id,
+            action: 'أرسل المتقدم الملف للمراجعة',
+            newValue: JSON.stringify({
+              submittedAt: now,
+              version: frozenAttachments._workflow?.version || attachments._workflow.version,
+              uploadAccessId: rotated.accessId,
+            }),
+          },
+        });
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'ATTACHMENT_CONFLICT') {
+        return res.status(409).json({
+          success: false,
+          message: 'تم تعديل المرفقات بالتزامن. حدّث الصفحة ثم أعد إرسال الملف للمراجعة.',
+        });
+      }
+      throw error;
+    }
 
     return res.status(200).json({
       success: true,
@@ -438,19 +451,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     attachments._meta = meta;
-    await prisma.$transaction([
-      prisma.talentApplication.update({
-        where: { id: application.id },
-        data: { attachments: JSON.stringify(attachments) },
-      }),
-      prisma.talentApplicationActivity.create({
-        data: {
-          applicationId: application.id,
-          action: `حذف المتقدم ملفًا: ${field}`,
-          oldValue: JSON.stringify({ field, index: indexRaw || null }),
-        },
-      }),
-    ]);
+    try {
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.talentApplication.updateMany({
+          where: { id: application.id, updatedAt: application.updatedAt },
+          data: { attachments: JSON.stringify(attachments) },
+        });
+        if (updated.count !== 1) {
+          throw new Error('ATTACHMENT_CONFLICT');
+        }
+        await tx.talentApplicationActivity.create({
+          data: {
+            applicationId: application.id,
+            action: `حذف المتقدم ملفًا: ${field}`,
+            oldValue: JSON.stringify({ field, index: indexRaw || null }),
+          },
+        });
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'ATTACHMENT_CONFLICT') {
+        return res.status(409).json({
+          success: false,
+          message: 'تم تعديل المرفقات بالتزامن. حدّث الصفحة ثم أعد محاولة الحذف.',
+        });
+      }
+      throw error;
+    }
     await safeDelete(removed);
     return res.status(200).json({
       success: true,
@@ -617,25 +643,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         attachments._meta = meta;
 
-        await prisma.$transaction([
-          prisma.talentApplication.update({
-            where: { id: application.id },
-            data: { attachments: JSON.stringify(attachments) },
-          }),
-          prisma.talentApplicationActivity.create({
-            data: {
-              applicationId: application.id,
-              action: `رفع المتقدم ملفًا: ${field}`,
-              newValue: JSON.stringify({
-                field,
-                originalName: fileMeta.originalName,
-                size: fileMeta.size,
-                contentType: fileMeta.contentType,
-                uploadedAt: now,
-              }),
-            },
-          }),
-        ]);
+        try {
+          await prisma.$transaction(async (tx) => {
+            const updated = await tx.talentApplication.updateMany({
+              where: { id: application.id, updatedAt: application.updatedAt },
+              data: { attachments: JSON.stringify(attachments) },
+            });
+            if (updated.count !== 1) {
+              throw new Error('ATTACHMENT_CONFLICT');
+            }
+            await tx.talentApplicationActivity.create({
+              data: {
+                applicationId: application.id,
+                action: `رفع المتقدم ملفًا: ${field}`,
+                newValue: JSON.stringify({
+                  field,
+                  originalName: fileMeta.originalName,
+                  size: fileMeta.size,
+                  contentType: fileMeta.contentType,
+                  uploadedAt: now,
+                }),
+              },
+            });
+          });
+        } catch (error) {
+          if (error instanceof Error && error.message === 'ATTACHMENT_CONFLICT') {
+            await safeDelete([blob.url]);
+            throw new Error('تم تعديل المرفقات بالتزامن. أعد المحاولة من الصفحة الحالية.');
+          }
+          throw error;
+        }
 
         await safeDelete(toDelete);
       },

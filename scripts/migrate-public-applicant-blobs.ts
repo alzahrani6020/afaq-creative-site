@@ -190,9 +190,9 @@ async function main() {
     return;
   }
 
-  const privateToken = process.env.APPLICANT_PRIVATE_BLOB_TOKEN;
+  const privateToken = process.env.BLOB_READ_WRITE_TOKEN;
   if (!privateToken) {
-    throw new Error('APPLICANT_PRIVATE_BLOB_TOKEN is not configured');
+    throw new Error('BLOB_READ_WRITE_TOKEN is not configured for the private applicant store');
   }
 
   const applications = await prisma.talentApplication.findMany({

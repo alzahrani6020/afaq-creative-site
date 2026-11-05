@@ -4,29 +4,20 @@ import { prisma } from '@/lib/prisma';
 import { sendTransactionalEmail, buildApplicationReceivedEmail, buildBaseUrl } from '@/lib/email';
 import { getClientIp } from '@/lib/admin-auth';
 import { createApplicantUploadToken, rotateApplicantUploadAccess } from '@/lib/applicant-upload-token';
+import { checkPersistentRateLimit } from '@/lib/security-rate-limit';
 
 export const dynamic = 'force-dynamic';
-
-const rateLimit = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 3;
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const record = rateLimit.get(ip);
-  if (!record || now > record.resetAt) {
-    rateLimit.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return true;
-  }
-  if (record.count >= RATE_LIMIT_MAX) return false;
-  record.count += 1;
-  return true;
-}
 
 export async function POST(req: NextRequest) {
   try {
     const ip = getClientIp(req);
-    if (!checkRateLimit(ip)) {
+    const rateAllowed = await checkPersistentRateLimit({
+      scope: 'talent-resend',
+      identifier: ip,
+      windowMs: 60_000,
+      max: 3,
+    });
+    if (!rateAllowed) {
       return NextResponse.json(
         { success: false, message: 'تم تجاوز عدد المحاولات المسموح بها. حاول لاحقاً.' },
         { status: 429 }
@@ -34,27 +25,27 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const applicationNumber = typeof body.applicationNumber === 'string' ? body.applicationNumber.trim() : '';
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
 
-    if (!applicationNumber || !email) {
+    if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
       return NextResponse.json(
-        { success: false, message: 'رقم الطلب والبريد الإلكتروني مطلوبان.' },
+        { success: false, message: 'البريد الإلكتروني غير صحيح.' },
         { status: 400 }
       );
     }
 
-    const application = await prisma.talentApplication.findUnique({
-      where: { applicationNumber },
-    });
-
-    // Generic response to avoid email enumeration.
+    // Generic response to avoid email/account enumeration.
     const genericResponse = NextResponse.json(
-      { success: true, message: 'إذا كان الطلب موجودًا، سيتم إرسال رسالة التأكيد.' },
+      { success: true, message: 'إذا كان الطلب موجودًا، فسيتم إرسال رسالة الاستكمال إلى البريد الإلكتروني.' },
       { status: 200 }
     );
 
-    if (!application || !application.email || application.email.toLowerCase() !== email) {
+    const application = await prisma.talentApplication.findFirst({
+      where: { email },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!application) {
       return genericResponse;
     }
 
@@ -163,21 +154,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (emailStatus === 'failed') {
-      return NextResponse.json(
-        { success: false, message: 'تعذر إرسال البريد في الوقت الحالي. حاول لاحقاً.' },
-        { status: 500 }
-      );
+      console.error('Resend verification delivery failed', {
+        applicationNumber: application.applicationNumber,
+        error: emailError || 'Unknown error',
+      });
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: application.emailVerified
-          ? 'تم إرسال رابط استكمال الملف إلى بريدك الإلكتروني.'
-          : 'تم إرسال رسالة تأكيد البريد ورمز التحقق.',
-      },
-      { status: 200 }
-    );
+    return genericResponse;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Resend verification error:', message);

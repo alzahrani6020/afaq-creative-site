@@ -283,7 +283,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return talent;
     });
 
+    let notification: { attempted: boolean; success: boolean; error?: string } = {
+      attempted: false,
+      success: false,
+    };
+
     if (statusChanged && updated.email) {
+      notification.attempted = true;
       try {
         const personal = safeJsonParse<Record<string, any>>(updated.personal, {});
         const uploadUrl = updated.status === 'need_information' && rotatedUploadAccessId
@@ -301,6 +307,27 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           html,
           text,
         });
+
+        notification = {
+          attempted: true,
+          success: emailResult.success,
+          error: emailResult.success ? undefined : emailResult.error || 'تعذر إرسال إشعار الحالة.',
+        };
+
+        await prisma.talentApplicationActivity.create({
+          data: {
+            applicationId: updated.id,
+            adminUserId: admin.id,
+            action: emailResult.success ? 'تم إرسال إشعار حالة الطلب' : 'فشل إرسال إشعار حالة الطلب',
+            newValue: JSON.stringify({
+              status: updated.status,
+              messageId: emailResult.messageId || null,
+              response: emailResult.response || null,
+              error: emailResult.error || null,
+            }),
+          },
+        });
+
         if (!emailResult.success) {
           console.error('Failed to send talent status email notification', {
             applicationNumber: updated.applicationNumber,
@@ -310,6 +337,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         }
       } catch (emailErr) {
         const message = emailErr instanceof Error ? emailErr.message : String(emailErr);
+        notification = { attempted: true, success: false, error: message };
+        await prisma.talentApplicationActivity.create({
+          data: {
+            applicationId: updated.id,
+            adminUserId: admin.id,
+            action: 'فشل إرسال إشعار حالة الطلب',
+            newValue: JSON.stringify({ status: updated.status, error: message }),
+          },
+        });
         console.error('Talent status email notification error', {
           applicationNumber: updated.applicationNumber,
           status: updated.status,
@@ -318,7 +354,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
     }
 
-    return NextResponse.json({ success: true, talent: updated });
+    return NextResponse.json({ success: true, talent: updated, notification });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ success: false, message: 'غير مصرح' }, { status: 401 });

@@ -50,24 +50,22 @@ function replaceBlobUrls(value: unknown, mapping: Map<string, string>): unknown 
 
 async function copyAndVerify(
   publicUrl: string,
-  publicToken: string,
   privateToken: string
 ): Promise<string> {
   const pathname = decodeURIComponent(new URL(publicUrl).pathname.replace(/^\/+/, ''));
   if (!pathname) throw new Error('PUBLIC_BLOB_PATHNAME_MISSING');
 
-  const sourceMeta = await head(publicUrl, { token: publicToken });
-  const sourceSize = Number(sourceMeta.size || 0);
-  if (!Number.isFinite(sourceSize) || sourceSize <= 0) {
-    throw new Error('PUBLIC_BLOB_SIZE_INVALID');
-  }
-
   const source = await fetch(publicUrl, {
-    headers: { Authorization: `Bearer ${publicToken}` },
     cache: 'no-store',
   });
   if (!source.ok || !source.body) {
     throw new Error(`PUBLIC_BLOB_FETCH_FAILED_${source.status}`);
+  }
+
+  const sourceSizeHeader = source.headers.get('content-length');
+  const sourceSize = sourceSizeHeader ? Number(sourceSizeHeader) : null;
+  if (sourceSize !== null && (!Number.isFinite(sourceSize) || sourceSize <= 0)) {
+    throw new Error('PUBLIC_BLOB_SIZE_INVALID');
   }
 
   const copied = await put(pathname, source.body, {
@@ -79,7 +77,10 @@ async function copyAndVerify(
 
   const targetMeta = await head(copied.url, { token: privateToken });
   const targetSize = Number(targetMeta.size || 0);
-  if (targetSize !== sourceSize) {
+  if (!Number.isFinite(targetSize) || targetSize <= 0) {
+    throw new Error('PRIVATE_BLOB_SIZE_INVALID');
+  }
+  if (sourceSize !== null && targetSize !== sourceSize) {
     throw new Error(`BLOB_SIZE_MISMATCH_${sourceSize}_${targetSize}`);
   }
 
@@ -95,10 +96,9 @@ async function main() {
     return;
   }
 
-  const publicToken = process.env.BLOB_READ_WRITE_TOKEN;
   const privateToken = process.env.APPLICANT_PRIVATE_BLOB_TOKEN;
-  if (!publicToken || !privateToken) {
-    throw new Error('Required Blob credentials are not configured');
+  if (!privateToken) {
+    throw new Error('APPLICANT_PRIVATE_BLOB_TOKEN is not configured');
   }
 
   const applications = await prisma.talentApplication.findMany({
@@ -159,7 +159,7 @@ async function main() {
   let copied = 0;
 
   for (const publicUrl of Array.from(allUrls)) {
-    const privateUrl = await copyAndVerify(publicUrl, publicToken, privateToken);
+    const privateUrl = await copyAndVerify(publicUrl, privateToken);
     mapping.set(publicUrl, privateUrl);
     copied += 1;
     console.log('APPLICANT_BLOB_MIGRATION: copied', { copied, total: allUrls.size });

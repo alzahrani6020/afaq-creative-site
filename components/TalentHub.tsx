@@ -1331,7 +1331,7 @@ export function TalentHub() {
               {step === 5 && (
                 <div className="space-y-5">
                   <h3 className="text-xl font-bold text-white mb-2">موقعك وطريقة عملك</h3>
-                  <p className="text-white/50 text-sm">افتراضي: السعودية — الرياض. عدّل إن لزم.</p>
+                  <p className="text-white/50 text-sm">الدولة الافتراضية: السعودية. اختر المنطقة والمدينة بنفسك.</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <CountrySearch

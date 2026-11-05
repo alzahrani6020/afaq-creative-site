@@ -438,7 +438,11 @@ export function TalentHub() {
             nextErrors.phone = 'رقم الجوال غير صحيح';
           }
         }
-        if (personal.email && !isValidEmail(personal.email)) nextErrors.email = 'أدخل بريدًا إلكترونيًا صحيحًا، مثال: name@example.com';
+        if (!personal.email.trim()) {
+          nextErrors.email = 'أدخل البريد الإلكتروني';
+        } else if (!isValidEmail(personal.email)) {
+          nextErrors.email = 'أدخل بريدًا إلكترونيًا صحيحًا، مثال: name@example.com';
+        }
         if (personal.social_link && !isValidUrl(personal.social_link)) nextErrors.social_link = 'أدخل رابطًا صحيحًا، مثال: https://example.com';
         if (!personal.privacy) nextErrors.privacy = 'الموافقة على الشروط والأحكام وسياسة الخصوصية مطلوبة';
         break;
@@ -1502,7 +1506,7 @@ export function TalentHub() {
                     <div>
                       <input
                         type="email"
-                        placeholder="البريد الإلكتروني"
+                        placeholder="البريد الإلكتروني *"
                         value={personal.email}
                         onChange={(e) => setPersonal({ ...personal, email: e.target.value })}
                         className={`w-full px-5 py-3 rounded-xl bg-white/5 border ${errors.email ? 'border-red-500/50' : 'border-white/10'} text-white placeholder-white/30 focus:outline-none focus:border-afaq-gold/50`}

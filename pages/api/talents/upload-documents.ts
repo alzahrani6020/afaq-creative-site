@@ -1,9 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { head } from '@vercel/blob';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { prisma } from '@/lib/prisma';
 import { getStorage, extractStorageKey, isStorageUrl } from '@/lib/storage';
 import {
   getApplicantUploadAccessId,
+  rotateApplicantUploadAccess,
   verifyApplicantUploadSessionToken,
 } from '@/lib/applicant-upload-token';
 import path from 'path';
@@ -365,17 +367,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       submittedAt: now,
       version: Number(workflow.version || 0) + 1,
     };
+    const rotated = rotateApplicantUploadAccess(JSON.stringify(attachments));
+    const frozenAttachments = parseAttachments(rotated.attachments);
 
     await prisma.$transaction([
       prisma.talentApplication.update({
         where: { id: application.id },
-        data: { attachments: JSON.stringify(attachments), status: 'under_review' },
+        data: { attachments: rotated.attachments, status: 'under_review' },
       }),
       prisma.talentApplicationActivity.create({
         data: {
           applicationId: application.id,
           action: 'أرسل المتقدم الملف للمراجعة',
-          newValue: JSON.stringify({ submittedAt: now, version: attachments._workflow.version }),
+          newValue: JSON.stringify({
+            submittedAt: now,
+            version: frozenAttachments._workflow?.version || attachments._workflow.version,
+            uploadAccessId: rotated.accessId,
+          }),
         },
       }),
     ]);
@@ -383,7 +391,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       success: true,
       message: 'تم إرسال الملف للمراجعة وتجميد التعديلات.',
-      current: publicCurrent({ ...application, status: 'under_review' }, attachments),
+      current: publicCurrent({ ...application, status: 'under_review' }, frozenAttachments),
     });
   }
 
@@ -499,6 +507,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return {
           allowedContentTypes: rule.types,
+          maximumSizeInBytes: rule.maxBytes,
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({
             applicationId: application.id,
@@ -532,8 +541,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const attachments = parseAttachments(application.attachments);
+        const workflow = attachments._workflow && typeof attachments._workflow === 'object'
+          ? attachments._workflow
+          : {};
+        if (workflow.submitted === true) {
+          await safeDelete([blob.url]);
+          throw new Error('الملف مُرسل للمراجعة ولا يمكن قبول رفع بدأ قبل تجميد الملف.');
+        }
+
         const meta = attachments._meta && typeof attachments._meta === 'object' ? attachments._meta : {};
         const now = new Date().toISOString();
+
+        const blobMeta = await head(blob.url);
+        const actualSize = Number(blobMeta.size || 0);
+        if (!Number.isFinite(actualSize) || actualSize <= 0 || actualSize > rule.maxBytes) {
+          await safeDelete([blob.url]);
+          throw new Error('حجم الملف الفعلي يتجاوز الحد المسموح.');
+        }
 
         const actualContentType = String(blob.contentType || '');
         const originalName = String(payload.originalName || '');
@@ -551,7 +575,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const currentTotal = metadataTotalBytes(attachments);
         const replacedBytes = rule.multiple ? 0 : existingFieldBytes(attachments, field);
-        const projectedTotal = currentTotal - replacedBytes + Number(payload.size || 0);
+        const projectedTotal = currentTotal - replacedBytes + actualSize;
         if (projectedTotal > MAX_TOTAL_UPLOAD_BYTES) {
           await safeDelete([blob.url]);
           throw new Error('تم تجاوز الحد الإجمالي للمرفقات لهذا الطلب (500 MB).');
@@ -567,7 +591,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const toDelete: string[] = [];
         const fileMeta = {
           originalName: String(payload.originalName || ''),
-          size: Number(payload.size || 0),
+          size: actualSize,
           contentType: blob.contentType || '',
           pathname: blob.pathname,
           uploadedAt: now,

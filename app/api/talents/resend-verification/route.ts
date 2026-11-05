@@ -58,6 +58,24 @@ export async function POST(req: NextRequest) {
       return genericResponse;
     }
 
+    const recentResends = await prisma.talentApplicationActivity.count({
+      where: {
+        applicationId: application.id,
+        action: 'طلب إعادة إرسال تحقق/استكمال',
+        createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+      },
+    });
+    if (recentResends > 0) {
+      return genericResponse;
+    }
+
+    await prisma.talentApplicationActivity.create({
+      data: {
+        applicationId: application.id,
+        action: 'طلب إعادة إرسال تحقق/استكمال',
+      },
+    });
+
     let token: string | undefined;
     let verificationCode: string | undefined;
     let rotatedUploadAccess: ReturnType<typeof rotateApplicantUploadAccess> | undefined;

@@ -328,7 +328,7 @@ export function TalentHub() {
     portfolio_url: '', behance_url: '', instagram_url: '', github_url: '', website_url: '',
   });
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string; applicationNumber?: string } | null>(null);
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [resendMessage, setResendMessage] = useState('');
@@ -664,7 +664,7 @@ export function TalentHub() {
           category: primary.profileType || 'unknown',
           country: locationOverride.country || 'unknown',
         });
-        setResult({ success: true, message: json.message, applicationNumber: json.applicationNumber });
+        setResult({ success: true, message: json.message });
       } else {
         setResult({ success: false, message: json.message || 'تعذر حفظ البيانات' });
       }
@@ -730,16 +730,7 @@ export function TalentHub() {
         <div className="max-w-3xl mx-auto px-6 relative">
           <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8 md:p-12 text-center">
             <CheckCircle size={64} className="text-afaq-gold mx-auto mb-6" />
-            <h2 className="text-3xl font-bold text-white mb-4">تم تسجيل طلبك بنجاح</h2>
-            <p className="text-white/60 mb-2">رقم الطلب</p>
-            <p className="text-3xl font-bold text-afaq-gold mb-6" dir="ltr">{result.applicationNumber}</p>
-            <button
-              type="button"
-              onClick={() => navigator.clipboard.writeText(result.applicationNumber || '')}
-              className="mb-4 px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors text-sm"
-            >
-              نسخ رقم الطلب
-            </button>
+            <h2 className="text-3xl font-bold text-white mb-4">تم استلام طلب التسجيل</h2>
             <p className="text-white/50 text-sm mb-6">{result.message}</p>
             {personal.email && (
               <div className="mb-6">
@@ -759,7 +750,6 @@ export function TalentHub() {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
-                            applicationNumber: result.applicationNumber,
                             email: personal.email,
                           }),
                         });
@@ -787,7 +777,7 @@ export function TalentHub() {
             <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-right">
               <p className="text-white font-semibold text-sm mb-1">الخطوة التالية</p>
               <p className="text-white/60 text-sm">
-                افتح رسالة آفاق في بريدك وأكد البريد الإلكتروني. بعد التأكيد سيظهر لك رابط استكمال الملف ورفع المرفقات بأمان.
+                تحقق من بريدك الإلكتروني. إذا تم قبول بيانات التسجيل فستصلك رسالة آفاق التي تتضمن رقم الطلب وخطوات تأكيد البريد واستكمال الملف بأمان.
               </p>
             </div>
           </div>

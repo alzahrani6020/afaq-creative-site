@@ -7,6 +7,7 @@ import { requireAdmin, UnauthorizedError, isAuthorizedRole } from '@/lib/admin-a
 import { prisma } from '@/lib/prisma';
 import { deleteStoredUrl, isStorageUrl } from '@/lib/storage';
 import { buildApplicationStatusEmail, sendTransactionalEmail, buildBaseUrl } from '@/lib/email';
+import { canTransitionApplicationStatus } from '@/lib/application-status-workflow';
 import {
   createApplicantUploadToken,
   rotateApplicantUploadAccess,
@@ -98,6 +99,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const data: any = {};
     const changes: string[] = [];
     const statusChanged = Boolean(parsed.status && parsed.status !== current.status);
+
+    if (statusChanged && parsed.status && !canTransitionApplicationStatus(current.status, parsed.status)) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'INVALID_STATUS_TRANSITION',
+          message: `لا يمكن تغيير حالة الطلب من ${current.status} إلى ${parsed.status}.`,
+        },
+        { status: 409 }
+      );
+    }
     let rotatedUploadAccessId: string | null = null;
     let emailReverificationRequired = false;
 

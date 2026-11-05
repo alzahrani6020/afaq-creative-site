@@ -130,6 +130,7 @@ export default function AdminTalentDetailPage() {
   const [copied, setCopied] = useState(false);
   const [sendingUploadLink, setSendingUploadLink] = useState(false);
   const [resendingStatusEmail, setResendingStatusEmail] = useState(false);
+  const [resendingVerificationEmail, setResendingVerificationEmail] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState<{ type: 'success' | 'warning'; text: string } | null>(null);
 
   const fetchTalent = async () => {
@@ -264,6 +265,40 @@ export default function AdminTalentDetailPage() {
       });
     } finally {
       setResendingStatusEmail(false);
+    }
+  };
+
+  const handleResendVerificationEmail = async () => {
+    setResendingVerificationEmail(true);
+    setError('');
+    setNotificationMessage(null);
+    try {
+      const res = await fetch(`/api/admin/talents/${id}/resend-verification-email`, { method: 'POST' });
+      const json = await res.json();
+      if (res.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (!res.ok || !json.success) {
+        setNotificationMessage({
+          type: 'warning',
+          text: json.message || 'تعذر إعادة إرسال تأكيد البريد.',
+        });
+        await fetchTalent();
+        return;
+      }
+      setNotificationMessage({
+        type: 'success',
+        text: json.message || 'تم إرسال رسالة تأكيد البريد إلى المتقدم.',
+      });
+      await fetchTalent();
+    } catch {
+      setNotificationMessage({
+        type: 'warning',
+        text: 'حدث خطأ أثناء إعادة إرسال تأكيد البريد.',
+      });
+    } finally {
+      setResendingVerificationEmail(false);
     }
   };
 
@@ -1016,6 +1051,19 @@ export default function AdminTalentDetailPage() {
               <ShieldAlert className="w-4 h-4" />
               {legalHold ? 'إلغاء الحجز القانوني' : 'تفعيل الحجز القانوني'}
             </button>
+
+            {!talent.emailVerified && (
+              <button
+                onClick={handleResendVerificationEmail}
+                disabled={resendingVerificationEmail || !emailAddress}
+                title="إعادة إرسال رسالة تأكيد البريد"
+                aria-label="إعادة إرسال رسالة تأكيد البريد"
+                className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-amber-400/30 text-amber-200 hover:bg-amber-400/10 transition-colors disabled:opacity-40"
+              >
+                {resendingVerificationEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                إعادة إرسال تأكيد البريد
+              </button>
+            )}
 
             <button
               onClick={handleSendUploadLink}

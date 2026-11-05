@@ -158,7 +158,7 @@ async function main() {
   const mapping = new Map<string, string>();
   let copied = 0;
 
-  for (const publicUrl of allUrls) {
+  for (const publicUrl of Array.from(allUrls)) {
     const privateUrl = await copyAndVerify(publicUrl, publicToken, privateToken);
     mapping.set(publicUrl, privateUrl);
     copied += 1;

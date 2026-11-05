@@ -2,7 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { head } from '@vercel/blob';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { prisma } from '@/lib/prisma';
-import { getStorage, extractStorageKey, isStorageUrl } from '@/lib/storage';
+import {
+  deleteStoredUrl,
+  getApplicantPrivateBlobToken,
+  getStoredFileFetchHeaders,
+  isStorageUrl,
+} from '@/lib/storage';
 import {
   getApplicantUploadAccessId,
   rotateApplicantUploadAccess,
@@ -151,8 +156,9 @@ function hasExpectedSignature(buffer: Buffer, contentType: string): boolean {
 }
 
 async function verifyUploadedBlobContent(url: string, contentType: string): Promise<void> {
+  const authHeaders = getStoredFileFetchHeaders(url) || {};
   const response = await fetch(url, {
-    headers: { Range: 'bytes=0-63' },
+    headers: { ...authHeaders, Range: 'bytes=0-63' },
     cache: 'no-store',
     redirect: 'error',
   });
@@ -225,16 +231,12 @@ async function enforceUploadRateLimit(applicationId: string) {
 }
 
 async function safeDelete(urls: string[]) {
-  const storage = getStorage();
   for (const url of urls) {
     if (!isStorageUrl(url)) continue;
-    const key = extractStorageKey(url);
-    if (!key) continue;
     try {
-      await storage.deleteFile(key);
+      await deleteStoredUrl(url);
     } catch (error) {
       console.error('Applicant file cleanup failed', {
-        key,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -463,9 +465,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const body = await readJsonBody(req);
+    const privateBlobToken = getApplicantPrivateBlobToken();
     const jsonResponse = await handleUpload({
       body,
       request: req,
+      token: privateBlobToken,
       onBeforeGenerateToken: async (_pathname, clientPayload) => {
         let payload: any = {};
         try {
@@ -552,7 +556,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const meta = attachments._meta && typeof attachments._meta === 'object' ? attachments._meta : {};
         const now = new Date().toISOString();
 
-        const blobMeta = await head(blob.url);
+        const blobMeta = await head(blob.url, { token: privateBlobToken });
         const actualSize = Number(blobMeta.size || 0);
         if (!Number.isFinite(actualSize) || actualSize <= 0 || actualSize > rule.maxBytes) {
           await safeDelete([blob.url]);

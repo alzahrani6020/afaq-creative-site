@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { getStorage, extractStorageKey, isStorageUrl } from '@/lib/storage';
 import { countryDialCodes } from '@/lib/catalog/locations';
 import { createApplicantUploadToken } from '@/lib/applicant-upload-token';
+import { checkPersistentRateLimit } from '@/lib/security-rate-limit';
 import {
   sendTransactionalEmail,
   buildApplicationReceivedEmail,
@@ -261,30 +262,22 @@ async function generateApplicationNumber(): Promise<string> {
   throw new Error('Unable to allocate a unique application number.');
 }
 
-// Simple in-memory rate limiter (per IP)
-const rateLimit = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 5;
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const record = rateLimit.get(ip);
-  if (!record || now > record.resetAt) {
-    rateLimit.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return true;
-  }
-  if (record.count >= RATE_LIMIT_MAX) return false;
-  record.count += 1;
-  return true;
-}
-
 export default async function handler(req: MulterRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'الطريقة غير مسموحة' });
   }
 
-  const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0]?.trim())
+    || req.socket.remoteAddress
+    || 'unknown';
+  const rateAllowed = await checkPersistentRateLimit({
+    scope: 'talent-register',
+    identifier: ip,
+    windowMs: 60_000,
+    max: 5,
+  });
+  if (!rateAllowed) {
     return res.status(429).json({ success: false, message: 'تم تجاوز عدد المحاولات المسموح بها. حاول لاحقاً.' });
   }
 
@@ -355,9 +348,9 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
     });
 
     if (existing) {
-      return res.status(409).json({
-        success: false,
-        message: 'يوجد تسجيل سابق مرتبط بنفس رقم الجوال أو البريد الإلكتروني.',
+      return res.status(202).json({
+        success: true,
+        message: 'تم استلام طلب التسجيل. إذا كانت البيانات صالحة فستصلك رسالة على البريد الإلكتروني لاستكمال الخطوات.',
       });
     }
 
@@ -599,18 +592,9 @@ export default async function handler(req: MulterRequest, res: NextApiResponse) 
       });
     }
 
-    const userMessage =
-      emailStatus === 'sent'
-        ? 'تم تسجيل بياناتك بنجاح. تم إرسال رسالة تأكيد إلى بريدك الإلكتروني.'
-        : emailStatus === 'failed'
-          ? 'تم تسجيل طلبك بنجاح، لكن تعذر إرسال رسالة التأكيد. يمكنك إعادة إرسالها.'
-          : 'تم تسجيل بياناتك بنجاح.';
-
-    return res.status(201).json({
+    return res.status(202).json({
       success: true,
-      applicationNumber: application.applicationNumber,
-      message: userMessage,
-      emailStatus,
+      message: 'تم استلام طلب التسجيل. إذا كانت البيانات صالحة فستصلك رسالة على البريد الإلكتروني لاستكمال الخطوات.',
     });
   } catch (error: any) {
     const message = error instanceof Error ? error.message : String(error);

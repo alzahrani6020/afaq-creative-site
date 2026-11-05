@@ -34,15 +34,6 @@ export async function checkPersistentRateLimit(options: {
   const since = new Date(Date.now() - windowMs);
 
   try {
-    const count = await prisma.oAuthLoginAttempt.count({
-      where: {
-        outcome: scope,
-        detail: digest,
-        createdAt: { gte: since },
-      },
-    });
-    if (count >= max) return false;
-
     await prisma.oAuthLoginAttempt.create({
       data: {
         outcome: scope,
@@ -50,7 +41,15 @@ export async function checkPersistentRateLimit(options: {
         hasCode: false,
       },
     });
-    return true;
+
+    const count = await prisma.oAuthLoginAttempt.count({
+      where: {
+        outcome: scope,
+        detail: digest,
+        createdAt: { gte: since },
+      },
+    });
+    return count <= max;
   } catch (error) {
     console.error('Persistent rate limiter unavailable; using process fallback', {
       scope,

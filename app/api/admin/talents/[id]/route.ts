@@ -99,6 +99,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const changes: string[] = [];
     const statusChanged = Boolean(parsed.status && parsed.status !== current.status);
     let rotatedUploadAccessId: string | null = null;
+    let emailReverificationRequired = false;
 
     if (typeof parsed.legalHold === 'boolean') {
       const attachments = safeJsonParse<Record<string, any>>(current.attachments, {});
@@ -164,7 +165,25 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       for (const field of allowedPersonalFields) {
         if (field in parsed.personal) {
           const oldValue = personal[field];
-          const newValue = parsed.personal[field];
+          let newValue = parsed.personal[field];
+
+          if (field === 'email') {
+            if (typeof newValue !== 'string') {
+              return NextResponse.json(
+                { success: false, message: 'البريد الإلكتروني غير صحيح.' },
+                { status: 400 }
+              );
+            }
+            newValue = newValue.trim().toLowerCase();
+            const emailCheck = z.string().email().safeParse(newValue);
+            if (!emailCheck.success) {
+              return NextResponse.json(
+                { success: false, message: 'البريد الإلكتروني غير صحيح.' },
+                { status: 400 }
+              );
+            }
+          }
+
           if (oldValue !== newValue) {
             personal[field] = newValue;
             changes.push(`تعديل ${field}`);
@@ -178,6 +197,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
       if (personal.email !== undefined && personal.email !== current.email) {
         data.email = personal.email;
+        data.emailVerified = false;
+        data.emailVerifiedAt = null;
+        data.emailStatus = 'pending';
+        data.emailSentAt = null;
+        data.emailFailedAt = null;
+        data.emailError = null;
+        data.emailMessageId = null;
+        emailReverificationRequired = true;
+        changes.push('إلغاء تأكيد البريد السابق وطلب تحقق جديد');
       }
       if (personal.country !== undefined && personal.country !== current.country) {
         data.country = personal.country;
@@ -236,6 +264,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       data.attachments = safeJsonStringify(attachments);
     }
 
+    if (emailReverificationRequired) {
+      const rotated = rotateApplicantUploadAccess(
+        typeof data.attachments === 'string' ? data.attachments : current.attachments
+      );
+      data.attachments = rotated.attachments;
+      rotatedUploadAccessId = rotated.accessId;
+      changes.push('إبطال روابط وجلسات الرفع المرتبطة بالبريد السابق');
+    }
+
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ success: true, talent: current });
     }
@@ -245,6 +282,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         where: { id },
         data,
       });
+
+      if (emailReverificationRequired) {
+        await tx.emailVerificationToken.updateMany({
+          where: { applicationId: id, used: false },
+          data: { used: true },
+        });
+      }
 
       if (changes.length > 0) {
         await tx.talentApplicationActivity.create({
@@ -354,7 +398,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
     }
 
-    return NextResponse.json({ success: true, talent: updated, notification });
+    return NextResponse.json({
+      success: true,
+      talent: updated,
+      notification,
+      emailReverificationRequired,
+    });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ success: false, message: 'غير مصرح' }, { status: 401 });

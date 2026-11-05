@@ -24,9 +24,9 @@ export function isPrivateBlobUrl(url: string): boolean {
 }
 
 export function getApplicantPrivateBlobToken(): string {
-  const token = process.env.APPLICANT_PRIVATE_BLOB_TOKEN;
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) {
-    throw new Error('APPLICANT_PRIVATE_BLOB_TOKEN is not configured');
+    throw new Error('BLOB_READ_WRITE_TOKEN is not configured for the private applicant store');
   }
   return token;
 }
@@ -93,11 +93,11 @@ export async function deleteStoredUrl(url: string): Promise<void> {
 
   const token = isPrivate
     ? getApplicantPrivateBlobToken()
-    : process.env.BLOB_READ_WRITE_TOKEN;
+    : process.env.LEGACY_BLOB_READ_WRITE_TOKEN;
   if (!token) {
     throw new Error(isPrivate
       ? 'APPLICANT_PRIVATE_BLOB_TOKEN is not configured'
-      : 'BLOB_READ_WRITE_TOKEN is not configured');
+      : 'LEGACY_BLOB_READ_WRITE_TOKEN is not configured');
   }
 
   await del(url, { token });
